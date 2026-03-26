@@ -169,14 +169,19 @@ function spawnBox() {
 function spawnPowerCube(x,y) { powerCubes.push({x,y,radius:12,value:1,floatOffset:Math.random()*Math.PI*2}); }
 
 // ---------------------------------------------------------------------------
-// Enemy types
+// Enemy types - BUFFED STATS
 // ---------------------------------------------------------------------------
 const enemyTypes = [
-  { name:'Tank',    health:600, speed:4.8, damage:45,  color:'#487eb0', radius:30, attackPattern:'single',  maxAmmo:3, reloadTime:65,  attackCooldown:250 },
-  { name:'Sniper',  health:380, speed:5.6, damage:162, color:'#e74c3c', radius:20, attackPattern:'sniper',  maxAmmo:1, reloadTime:100, attackCooldown:250, sightRange:900 },
-  { name:'Shotgun', health:500, speed:6.4, damage:30,  color:'#f39c12', radius:25, attackPattern:'shotgun', maxAmmo:4, reloadTime:80,  attackCooldown:275 },
-  { name:'Volley',  health:460, speed:5.6, damage:28,  color:'#9b59b6', radius:22, attackPattern:'volley',  maxAmmo:5, reloadTime:55,  attackCooldown:250 },
-  { name:'Rapid',   health:520, speed:7.2, damage:26,  color:'#2ecc71', radius:23, attackPattern:'rapid',   maxAmmo:8, reloadTime:35,  attackCooldown:225 }
+  // Tank: More HP, hits harder
+  { name:'Tank',    health:700, speed:5.2, damage:55,  color:'#487eb0', radius:30, attackPattern:'single',  maxAmmo:3, reloadTime:65,  attackCooldown:250 },
+  // Sniper: More damage, faster
+  { name:'Sniper',  health:450, speed:6.2, damage:180, color:'#e74c3c', radius:20, attackPattern:'sniper',  maxAmmo:1, reloadTime:100, attackCooldown:250, sightRange:950 },
+  // Shotgun: Significantly more damage, faster approach
+  { name:'Shotgun', health:600, speed:6.8, damage:38,  color:'#f39c12', radius:25, attackPattern:'shotgun', maxAmmo:4, reloadTime:80,  attackCooldown:275 },
+  // Volley: More durable, hits harder
+  { name:'Volley',  health:550, speed:6.0, damage:34,  color:'#9b59b6', radius:22, attackPattern:'volley',  maxAmmo:5, reloadTime:55,  attackCooldown:250 },
+  // Rapid: Fastest, decent damage buff
+  { name:'Rapid',   health:620, speed:7.6, damage:30,  color:'#2ecc71', radius:23, attackPattern:'rapid',   maxAmmo:8, reloadTime:35,  attackCooldown:225 }
 ];
 
 const enemies=[];
@@ -221,11 +226,27 @@ function updateJoystick(cx,cy,joystick,knob,cb) {
   knob.style.transform=`translate(calc(-50% + ${kx}px),calc(-50% + ${ky}px))`;
   if (cb) cb(kx/joystick.maxDist, ky/joystick.maxDist);
 }
-function findNearestEnemy() {
-  let nearest=null, nd=Infinity;
-  for (let e of enemies) { const d=Math.hypot(e.x-player.x,e.y-player.y); if(d<nd){nd=d;nearest=e;} }
-  return nearest;
+
+// Auto-aim: Prioritize Enemies, then Cubes.
+function findAutoAimTarget() {
+  const range = 700; 
+  let nearestEnemy = null, nearestEnemyDist = range;
+  for (let e of enemies) { 
+    const d = Math.hypot(e.x-player.x, e.y-player.y); 
+    if(d < nearestEnemyDist){ nearestEnemyDist=d; nearestEnemy=e; } 
+  }
+  if (nearestEnemy) return { x: nearestEnemy.x, y: nearestEnemy.y };
+
+  let nearestCube = null, nearestCubeDist = range;
+  for (let c of powerCubes) {
+    const d = Math.hypot(c.x - player.x, c.y - player.y);
+    if (d < nearestCubeDist) { nearestCubeDist = d; nearestCube = c; }
+  }
+  if (nearestCube) return { x: nearestCube.x, y: nearestCube.y };
+
+  return null;
 }
+
 function rectContains(el,x,y) { const r=el.getBoundingClientRect(); return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom; }
 
 document.addEventListener('touchstart',e=>{
@@ -273,8 +294,13 @@ document.addEventListener('touchend',e=>{
       atkTouchId=-1; attackJoystick.active=false;
       atkKnob.style.transform='translate(-50%,-50%)';
       if (!atkDragged) {
-        const target=findNearestEnemy();
-        if (target) { const a=Math.atan2(target.y-player.y,target.x-player.x); player.angle=a; input.aimX=Math.cos(a); input.aimY=Math.sin(a); }
+        const target = findAutoAimTarget();
+        if (target) {
+            const a=Math.atan2(target.y-player.y,target.x-player.x); 
+            player.angle=a; 
+            input.aimX=Math.cos(a); 
+            input.aimY=Math.sin(a);
+        }
         input.attacking=true; shoot(player,true,'single');
         setTimeout(()=>{ if(gameRunning) input.attacking=false; },80);
       } else {
@@ -324,7 +350,7 @@ function edgeMargin(x,y) { return poisonZone.radius-Math.hypot(x-MAP_SIZE/2,y-MA
 // ---------------------------------------------------------------------------
 // Shooting
 // ---------------------------------------------------------------------------
-function shoot(shooter,isPlayer,pattern='single') {
+function shoot(shooter, isPlayer, pattern='single') {
   const now=Date.now();
   if (shooter.ammo<=0){if(isPlayer)Sound.empty();return;}
   if (now-shooter.lastAttack<shooter.attackCooldown) return;
@@ -333,26 +359,32 @@ function shoot(shooter,isPlayer,pattern='single') {
 
   const baseSpeed=isPlayer?24:14;
   const damage=shooter.damage, ref=isPlayer?null:shooter;
-  const sx=shooter.x,sy=shooter.y,sa=shooter.angle;
+  const sa=shooter.angle; 
 
   if (pattern==='single'||pattern==='sniper') {
     const spd=(pattern==='sniper'&&!isPlayer)?32:baseSpeed;
-    projectiles.push({x:sx,y:sy,vx:Math.cos(sa)*spd,vy:Math.sin(sa)*spd,
+    projectiles.push({x:shooter.x, y:shooter.y, vx:Math.cos(sa)*spd,vy:Math.sin(sa)*spd,
       radius:isPlayer?6:8, damage, isPlayer, shooter:ref,
       color:isPlayer?'#00ff88':(pattern==='sniper'?'#ff0000':'#ff4444')});
   } else if (pattern==='shotgun') {
     for (let i=-2;i<=2;i++) {
       const a=sa+i*0.2;
-      projectiles.push({x:sx,y:sy,vx:Math.cos(a)*baseSpeed,vy:Math.sin(a)*baseSpeed,radius:5,damage:damage*0.7,isPlayer,shooter:ref,color:'#ffaa00'});
+      projectiles.push({x:shooter.x,y:shooter.y,vx:Math.cos(a)*baseSpeed,vy:Math.sin(a)*baseSpeed,radius:5,damage:damage*0.7,isPlayer,shooter:ref,color:'#ffaa00'});
     }
   } else if (pattern==='volley') {
     for (let i=0;i<5;i++) setTimeout(()=>{
       if (!gameRunning) return;
-      const a=sa+(i-2)*0.15;
-      projectiles.push({x:sx,y:sy,vx:Math.cos(a)*baseSpeed,vy:Math.sin(a)*baseSpeed,radius:6,damage,isPlayer,shooter:ref,color:'#aa00ff'});
+      if (!isPlayer && !enemies.includes(shooter)) return; 
+      
+      const a = shooter.angle + (i-2)*0.15; 
+      projectiles.push({
+        x: shooter.x, y: shooter.y, 
+        vx: Math.cos(a)*baseSpeed, vy: Math.sin(a)*baseSpeed,
+        radius:6, damage, isPlayer, shooter:ref, color:'#aa00ff'
+      });
     },i*100);
   } else if (pattern==='rapid') {
-    projectiles.push({x:sx,y:sy,vx:Math.cos(sa)*baseSpeed*1.3,vy:Math.sin(sa)*baseSpeed*1.3,radius:4,damage:damage*0.8,isPlayer,shooter:ref,color:'#00ffaa'});
+    projectiles.push({x:shooter.x,y:shooter.y,vx:Math.cos(sa)*baseSpeed*1.3,vy:Math.sin(sa)*baseSpeed*1.3,radius:4,damage:damage*0.8,isPlayer,shooter:ref,color:'#00ffaa'});
   }
 }
 
@@ -439,7 +471,7 @@ function moveEnemy(enemy,targetX,targetY,speed) {
 }
 
 // ---------------------------------------------------------------------------
-// fleeFrom
+// fleeFrom - FIXED: Returns false if cornered (fight to death)
 // ---------------------------------------------------------------------------
 function fleeFrom(enemy, threatX, threatY) {
   const speed = enemy.speed * 1.1;
@@ -452,7 +484,7 @@ function fleeFrom(enemy, threatX, threatY) {
     const tx=enemy.x+Math.cos(a)*speed, ty=enemy.y+Math.sin(a)*speed;
     if (checkWallCollision(tx,ty,enemy.radius)) continue;
     const margin=edgeMargin(tx,ty);
-    if (margin<0) continue;
+    if (margin<0) continue; 
     const distFromThreat=Math.hypot(tx-threatX,ty-threatY);
     const score=distFromThreat - Math.abs(off)*80 + Math.min(margin,300)*0.3;
     if (score>bestScore){bestScore=score;bestVx=Math.cos(a)*speed;bestVy=Math.sin(a)*speed;}
@@ -462,7 +494,13 @@ function fleeFrom(enemy, threatX, threatY) {
     const d0=Math.hypot(tx0-threatX,ty0-threatY);
     if (d0>bestScore){bestVx=Math.cos(idealAngle)*speed;bestVy=Math.sin(idealAngle)*speed;}
   }
+
+  if (bestScore === -Infinity) {
+    return false; 
+  }
+  
   applyMovement(enemy,bestVx,bestVy);
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -472,24 +510,19 @@ function update() {
   if (!gameRunning) return;
   const now=Date.now();
 
-  // Teaming Logic - Revised for weaker AIs
+  // Teaming Logic
   if (!update.nextTeamTick) update.nextTeamTick=now+8000;
   if (now>update.nextTeamTick) {
     const progress=Math.max(0,(10-enemies.length)/9);
-    // Slightly increased base chance and progression
     const teamChance=0.10 + 0.85 * Math.pow(progress, 1.5); 
     update.nextTeamTick=now+(10000-7000*progress);
     
     if (Math.random()<teamChance) {
       const solos=enemies.filter(e=>!e.teamId);
       if (solos.length>=3) {
-        // Prioritize weaker AIs (low health or low cubes) to initiate teams
         let seed = solos.find(e => e.health < e.maxHealth * 0.4 || e.powerCubes < 2);
         if (!seed) seed = solos[Math.floor(Math.random()*solos.length)];
-        
-        // Increased search radius for partners
         const nearby=solos.filter(e=>e!==seed&&Math.hypot(e.x-seed.x,e.y-seed.y)<3000).slice(0,2+Math.floor(Math.random()*2));
-        
         if (nearby.length>=2) {
           const teamId='team_'+now;
           const members=[seed,...nearby];
@@ -535,7 +568,6 @@ function update() {
   if(input.aimX!==0||input.aimY!==0) player.angle=Math.atan2(input.aimY,input.aimX);
   if(input.attacking) shoot(player,true,'single');
 
-  // Player Regen (0.5/tick)
   if(player.health<player.maxHealth&&!player.inPoison&&now-player.lastCombatTime>3000)
     player.health=Math.min(player.maxHealth,player.health+0.5);
 
@@ -553,7 +585,6 @@ function update() {
   for (let i=enemies.length-1;i>=0;i--) {
     const enemy=enemies[i];
 
-    // REVISED ENEMY REGEN: Slightly weaker (0.35 vs 0.5), starts slightly later (3.5s vs 3s)
     if(enemy.health<enemy.maxHealth&&!enemy.inPoison&&now-enemy.lastCombatTime>3500)
       enemy.health=Math.min(enemy.maxHealth,enemy.health+0.35);
 
@@ -570,14 +601,23 @@ function update() {
       moveEnemy(enemy,MAP_SIZE/2,MAP_SIZE/2,enemy.speed*1.4);
       enemy.angle=Math.atan2(MAP_SIZE/2-enemy.y,MAP_SIZE/2-enemy.x);
     } else if (enemy.health<enemy.maxHealth*0.3) {
-      enemy.state='flee';
       let threatX=player.x, threatY=player.y;
       if (enemy.rivalTarget&&enemies.includes(enemy.rivalTarget)) {
         const dRival=Math.hypot(enemy.rivalTarget.x-enemy.x,enemy.rivalTarget.y-enemy.y);
         if (dRival<distToPlayer){threatX=enemy.rivalTarget.x;threatY=enemy.rivalTarget.y;}
       }
-      fleeFrom(enemy,threatX,threatY);
-      enemy.angle=Math.atan2(enemy.y-threatY,enemy.x-threatX);
+      
+      const escaped = fleeFrom(enemy, threatX, threatY);
+      if (!escaped) {
+         enemy.state = 'attack';
+         enemy.angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+         shoot(enemy, false, enemy.attackPattern);
+         moveEnemy(enemy, player.x, player.y, enemy.speed); 
+      } else {
+         enemy.state = 'flee';
+         enemy.angle = Math.atan2(enemy.y-threatY, enemy.x-threatX);
+      }
+
     } else if (distToPlayer<sightRange) {
       enemy.state='attack';
       const preferredDist=enemy.name==='Sniper'?600:200;
@@ -690,6 +730,9 @@ function update() {
     proj.x+=proj.vx; proj.y+=proj.vy;
     if(checkWallCollision(proj.x,proj.y,proj.radius)||proj.x<0||proj.x>MAP_SIZE||proj.y<0||proj.y>MAP_SIZE){projectiles.splice(i,1);continue;}
 
+    // Logic: Projectiles break Boxes (Cubes). Projectiles pass through Power Cubes (Orbs).
+    // Player must walk over Power Cubes to collect.
+
     let hitBox=false;
     for(let b=boxes.length-1;b>=0;b--){
       const box=boxes[b];
@@ -731,7 +774,7 @@ function update() {
     }
   }
 
-  // Pickup
+  // Pickup (Walking over cubes)
   for(let i=powerCubes.length-1;i>=0;i--){
     const cube=powerCubes[i];
     if(Math.hypot(cube.x-player.x,cube.y-player.y)<player.radius+cube.radius+10){collectPowerCube(player);powerCubes.splice(i,1);continue;}
