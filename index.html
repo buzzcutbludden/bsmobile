@@ -1,2042 +1,1482 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brawl Stars: Power Cube Survival</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            touch-action: none;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        body {
-            overflow: hidden;
-            background: #1a1a2e;
-            font-family: 'Arial', sans-serif;
-        }
-
-        #gameCanvas {
-            display: block;
-            background: #2d5a27;
-        }
-
-        /* UI Overlay */
-        #ui {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        /* Enemy Health Bar (Top Right) */
-        #enemyHealthContainer {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 200px;
-            text-align: right;
-        }
-        
-        #enemyName {
-            color: #fff;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 2px;
-            text-shadow: 1px 1px 2px #000;
-        }
-
-        .health-bar-container {
-            width: 200px;
-            height: 20px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 2px solid #fff;
-            display: inline-block;
-        }
-
-        .health-bar {
-            height: 100%;
-            transition: width 0.3s;
-        }
-
-        #enemyHealthBar {
-            background: linear-gradient(90deg, #ff4444, #cc0000);
-            width: 100%;
-        }
-
-        /* Power Cube Counter */
-        #powerCubeDisplay {
-            position: absolute;
-            top: 40px;
-            left: 10px;
-            color: #ffcc00;
-            font-size: 20px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        /* Zone Timer */
-        #zoneTimer {
-            position: absolute;
-            top: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #ff6b6b;
-            font-size: 18px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            background: rgba(0,0,0,0.5);
-            padding: 5px 15px;
-            border-radius: 20px;
-        }
-
-        /* Minimap */
-        #minimap {
-            position: absolute;
-            top: 40px;
-            right: 10px;
-            width: 150px;
-            height: 150px;
-            background: rgba(0,0,0,0.7);
-            border: 3px solid #fff;
-            border-radius: 10px;
-            pointer-events: auto;
-        }
-
-        /* Movement Joystick (Left) */
-        #movement-joystick {
-            position: absolute;
-            bottom: 100px;
-            left: 50px;
-            width: 120px;
-            height: 120px;
-            pointer-events: auto;
-        }
-
-        .joystick-base {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.15);
-            border: 3px solid rgba(255,255,255,0.4);
-            border-radius: 50%;
-        }
-
-        .joystick-knob {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background: rgba(0,150,255,0.8);
-            border: 3px solid #fff;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 20px rgba(0,150,255,0.6);
-        }
-
-        /* Attack Joystick (Right) */
-        #attack-joystick {
-            position: absolute;
-            bottom: 100px;
-            right: 20px;
-            width: 120px;
-            height: 120px;
-            pointer-events: auto;
-        }
-
-        #attack-joystick .joystick-knob {
-            background: rgba(255,100,100,0.8);
-            box-shadow: 0 0 20px rgba(255,100,100,0.6);
-        }
-
-        /* Attack hint label */
-        #attackHint {
-            position: absolute;
-            bottom: 228px;
-            right: 20px;
-            width: 120px;
-            text-align: center;
-            color: rgba(255,255,255,0.55);
-            font-size: 10px;
-            pointer-events: none;
-        }
-
-        /* Sound toggle */
-        #soundToggle {
-            position: absolute;
-            bottom: 270px;
-            right: 20px;
-            width: 40px;
-            height: 40px;
-            background: rgba(255,255,255,0.2);
-            border: 2px solid #fff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            pointer-events: auto;
-            cursor: pointer;
-        }
-
-        /* Score */
-        #score {
-            position: absolute;
-            top: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-        }
-
-        /* Controls hint */
-        #controlsHint {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.7);
-            font-size: 12px;
-            text-align: center;
-        }
-
-        /* Game Over Screen */
-        #gameOver {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            pointer-events: auto;
-            z-index: 1000;
-        }
-
-        #gameOver h1 {
-            color: #fff;
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-
-        #restartBtn {
-            padding: 15px 40px;
-            font-size: 20px;
-            background: #4ecdc4;
-            border: none;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-        }
-
-        /* Poison warning */
-        #poisonWarning {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ff00ff;
-            font-size: 32px;
-            font-weight: bold;
-            text-shadow: 0 0 20px #ff00ff;
-            display: none;
-            animation: pulse 0.5s infinite;
-        }
-
-        /* Low health warning */
-        #lowHealthWarning {
-            position: absolute;
-            top: 30%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ff2222;
-            font-size: 28px;
-            font-weight: bold;
-            text-shadow: 0 0 20px #ff0000;
-            display: none;
-            animation: pulse 0.6s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        @media (max-width: 768px) {
-            #movement-joystick {
-                bottom: 80px;
-                left: 30px;
-                width: 100px;
-                height: 100px;
-            }
-
-            #attack-joystick {
-                bottom: 80px;
-                right: 10px;
-                width: 100px;
-                height: 100px;
-            }
-
-            .joystick-knob {
-                width: 40px;
-                height: 40px;
-            }
-
-            #soundToggle {
-                bottom: 220px;
-                right: 10px;
-            }
-
-            #attackHint {
-                right: 10px;
-                width: 100px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Brawl Stars: Power Cube Survival</title>
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+touch-action: none;
+user-select: none;
+-webkit-user-select: none;
+}
+body {
+overflow: hidden;
+background: #1a1a2e;
+font-family: 'Arial', sans-serif;
+}
+#gameCanvas {
+display: block;
+background: #2d5a27;
+}
+/* UI Overlay */
+#ui {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+pointer-events: none;
+}
+/* Enemy Health Bar (Top Right) */
+#enemyHealthContainer {
+position: absolute;
+top: 10px;
+right: 10px;
+width: 200px;
+text-align: right;
+}
+#enemyName {
+color: #fff;
+font-size: 14px;
+font-weight: bold;
+margin-bottom: 2px;
+text-shadow: 1px 1px 2px #000;
+}
+.health-bar-container {
+width: 200px;
+height: 20px;
+background: rgba(0,0,0,0.5);
+border-radius: 10px;
+overflow: hidden;
+border: 2px solid #fff;
+display: inline-block;
+}
+.health-bar {
+height: 100%;
+transition: width 0.3s;
+}
+#enemyHealthBar {
+background: linear-gradient(90deg, #ff4444, #cc0000);
+width: 100%;
+}
+/* Power Cube Counter */
+#powerCubeDisplay {
+position: absolute;
+top: 40px;
+left: 10px;
+color: #ffcc00;
+font-size: 20px;
+font-weight: bold;
+text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+display: flex;
+align-items: center;
+gap: 5px;
+}
+/* Zone Timer */
+#zoneTimer {
+position: absolute;
+top: 40px;
+left: 50%;
+transform: translateX(-50%);
+color: #ff6b6b;
+font-size: 18px;
+font-weight: bold;
+text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+background: rgba(0,0,0,0.5);
+padding: 5px 15px;
+border-radius: 20px;
+}
+/* Minimap */
+#minimap {
+position: absolute;
+top: 40px;
+right: 10px;
+width: 150px;
+height: 150px;
+background: rgba(0,0,0,0.7);
+border: 3px solid #fff;
+border-radius: 10px;
+pointer-events: auto;
+}
+/* Movement Joystick (Left) */
+#movement-joystick {
+position: absolute;
+bottom: 100px;
+left: 50px;
+width: 120px;
+height: 120px;
+pointer-events: auto;
+}
+.joystick-base {
+position: absolute;
+width: 100%;
+height: 100%;
+background: rgba(255,255,255,0.15);
+border: 3px solid rgba(255,255,255,0.4);
+border-radius: 50%;
+}
+.joystick-knob {
+position: absolute;
+width: 50px;
+height: 50px;
+background: rgba(0,150,255,0.8);
+border: 3px solid #fff;
+border-radius: 50%;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+box-shadow: 0 0 20px rgba(0,150,255,0.6);
+}
+/* Attack Joystick (Right) */
+#attack-joystick {
+position: absolute;
+bottom: 100px;
+right: 20px;
+width: 120px;
+height: 120px;
+pointer-events: auto;
+}
+#attack-joystick .joystick-knob {
+background: rgba(255,100,100,0.8);
+box-shadow: 0 0 20px rgba(255,100,100,0.6);
+}
+/* Attack hint label */
+#attackHint {
+position: absolute;
+bottom: 228px;
+right: 20px;
+width: 120px;
+text-align: center;
+color: rgba(255,255,255,0.55);
+font-size: 10px;
+pointer-events: none;
+}
+/* Sound toggle */
+#soundToggle {
+position: absolute;
+bottom: 270px;
+right: 20px;
+width: 40px;
+height: 40px;
+background: rgba(255,255,255,0.2);
+border: 2px solid #fff;
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 18px;
+pointer-events: auto;
+cursor: pointer;
+}
+/* Score */
+#score {
+position: absolute;
+top: 70px;
+left: 50%;
+transform: translateX(-50%);
+color: white;
+font-size: 18px;
+font-weight: bold;
+text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+/* Controls hint */
+#controlsHint {
+position: absolute;
+bottom: 10px;
+left: 50%;
+transform: translateX(-50%);
+color: rgba(255,255,255,0.7);
+font-size: 12px;
+text-align: center;
+}
+/* Game Over Screen */
+#gameOver {
+display: none;
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0,0,0,0.8);
+justify-content: center;
+align-items: center;
+flex-direction: column;
+pointer-events: auto;
+z-index: 1000;
+}
+#gameOver h1 {
+color: #fff;
+font-size: 48px;
+margin-bottom: 20px;
+}
+#restartBtn {
+padding: 15px 40px;
+font-size: 20px;
+background: #4ecdc4;
+border: none;
+border-radius: 10px;
+color: white;
+cursor: pointer;
+}
+/* Poison warning */
+#poisonWarning {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+color: #ff00ff;
+font-size: 32px;
+font-weight: bold;
+text-shadow: 0 0 20px #ff00ff;
+display: none;
+animation: pulse 0.5s infinite;
+}
+/* Low health warning */
+#lowHealthWarning {
+position: absolute;
+top: 30%;
+left: 50%;
+transform: translate(-50%, -50%);
+color: #ff2222;
+font-size: 28px;
+font-weight: bold;
+text-shadow: 0 0 20px #ff0000;
+display: none;
+animation: pulse 0.6s infinite;
+}
+@keyframes pulse {
+0%, 100% { opacity: 1; }
+50% { opacity: 0.5; }
+}
+@media (max-width: 768px) {
+#movement-joystick {
+bottom: 80px;
+left: 30px;
+width: 100px;
+height: 100px;
+}
+#attack-joystick {
+bottom: 80px;
+right: 10px;
+width: 100px;
+height: 100px;
+}
+.joystick-knob {
+width: 40px;
+height: 40px;
+}
+#soundToggle {
+bottom: 220px;
+right: 10px;
+}
+#attackHint {
+right: 10px;
+width: 100px;
+}
+}
+</style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="ui">
-        <!-- Enemy UI Top Right -->
-        <div id="enemyHealthContainer">
-            <div id="enemyName">Strongest Enemy</div>
-            <div class="health-bar-container">
-                <div class="health-bar" id="enemyHealthBar"></div>
-            </div>
-        </div>
-        
-        <div id="powerCubeDisplay">
-            <span>📦</span> <span id="cubeCount">0</span>
-        </div>
-        
-        <div id="zoneTimer">🟢 Safe Zone: <span id="zoneSize">100</span>%</div>
-        
-        <div id="score">Alive: <span id="enemyCount">10</span>/10</div>
-        
-        <canvas id="minimap" width="150" height="150"></canvas>
-        
-        <!-- Movement Joystick -->
-        <div id="movement-joystick">
-            <div class="joystick-base"></div>
-            <div class="joystick-knob" id="moveKnob"></div>
-        </div>
-        
-        <!-- Attack Joystick -->
-        <div id="attack-joystick">
-            <div class="joystick-base"></div>
-            <div class="joystick-knob" id="attackKnob"></div>
-        </div>
-        
-        <div id="attackHint">tap=auto · drag=aim</div>
-        
-        <!-- Sound toggle -->
-        <div id="soundToggle">🔊</div>
-        
-        <div id="poisonWarning">⚠️ POISON ZONE ⚠️</div>
-        
-        <div id="lowHealthWarning">❤️ LOW HEALTH ❤️</div>
-        
-        <div id="controlsHint">Left: Move | Right: Aim | Hunt Power Cubes! Avoid Poison!</div>
-    </div>
-    
-    <div id="gameOver">
-        <h1 id="gameOverText">GAME OVER</h1>
-        <button id="restartBtn">RESTART</button>
-    </div>
+<canvas id="gameCanvas"></canvas>
+<div id="ui">
+<!-- Enemy UI Top Right -->
+<div id="enemyHealthContainer">
+<div id="enemyName">Strongest Enemy</div>
+<div class="health-bar-container">
+<div class="health-bar" id="enemyHealthBar"></div>
+</div>
+</div>
+<div id="powerCubeDisplay">
+<span>📦</span> <span id="cubeCount">0</span>
+</div>
+<div id="zoneTimer">🟢 Safe Zone: <span id="zoneSize">100</span>%</div>
+<div id="score">Alive: <span id="enemyCount">10</span>/10</div>
+<canvas id="minimap" width="150" height="150"></canvas>
+<!-- Movement Joystick -->
+<div id="movement-joystick">
+<div class="joystick-base"></div>
+<div class="joystick-knob" id="moveKnob"></div>
+</div>
+<!-- Attack Joystick -->
+<div id="attack-joystick">
+<div class="joystick-base"></div>
+<div class="joystick-knob" id="attackKnob"></div>
+</div>
+<div id="attackHint">tap=auto · drag=aim</div>
+<!-- Sound toggle -->
+<div id="soundToggle">🔊</div>
+<div id="poisonWarning">⚠️ POISON ZONE ⚠️</div>
+<div id="lowHealthWarning">❤️ LOW HEALTH ❤️</div>
+<div id="controlsHint">Left: Move | Right: Aim | Hunt Power Cubes! Avoid Poison!</div>
+</div>
+<div id="gameOver">
+<h1 id="gameOverText">GAME OVER</h1>
+<button id="restartBtn">RESTART</button>
+</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const minimap = document.getElementById('minimap');
+const minimapCtx = minimap.getContext('2d');
+// Game constants
+const MAP_SIZE = 10000;
+const TILE_SIZE = 100;
+// Resize canvas
+function resize() {
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const minimap = document.getElementById('minimap');
-        const minimapCtx = minimap.getContext('2d');
-        
-        // Game constants
-        const MAP_SIZE = 10000;
-        const TILE_SIZE = 100;
-        
-        // Resize canvas
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        resize();
-        window.addEventListener('resize', resize);
-        
-        // Sound System
-        const Sound = {
-            enabled: true,
-            ctx: null,
-            
-            init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            },
-            
-            play(frequency, duration, type = 'square', volume = 0.3) {
-                if (!this.enabled || !this.ctx) return;
-                
-                const oscillator = this.ctx.createOscillator();
-                const gainNode = this.ctx.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(this.ctx.destination);
-                
-                oscillator.frequency.value = frequency;
-                oscillator.type = type;
-                
-                gainNode.gain.setValueAtTime(volume, this.ctx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-                
-                oscillator.start(this.ctx.currentTime);
-                oscillator.stop(this.ctx.currentTime + duration);
-            },
-            
-            shoot() {
-                this.play(400, 0.1, 'square', 0.2);
-                setTimeout(() => this.play(300, 0.1, 'square', 0.15), 50);
-            },
-            
-            hit() {
-                this.play(150, 0.15, 'sawtooth', 0.3);
-            },
-            
-            collect() {
-                this.play(800, 0.1, 'sine', 0.3);
-                setTimeout(() => this.play(1000, 0.15, 'sine', 0.3), 100);
-            },
-            
-            boxBreak() {
-                this.play(200, 0.2, 'square', 0.4);
-                setTimeout(() => this.play(150, 0.3, 'square', 0.3), 100);
-            },
-            
-            poison() {
-                this.play(100, 0.3, 'sawtooth', 0.2);
-            },
-            
-            enemyDeath() {
-                this.play(300, 0.2, 'square', 0.3);
-                setTimeout(() => this.play(200, 0.3, 'square', 0.2), 150);
-            },
-            
-            reload() {
-                this.play(600, 0.05, 'sine', 0.1);
-            },
-            
-            empty() {
-                this.play(150, 0.05, 'square', 0.1);
-            },
-            
-            toggle() {
-                this.enabled = !this.enabled;
-                document.getElementById('soundToggle').textContent = this.enabled ? '🔊' : '🔇';
-            }
-        };
-        
-        // Game state
-        let gameRunning = true;
-        let autoFire = false;
-        
-        // Poison Zone
-        const poisonZone = {
-            radius: MAP_SIZE * 0.7,
-            minRadius: 500,
-            shrinkRate: 1.0,
-            damage: 0.5,
-            shrinking: false,
-            shrinkDelay: 150,
-            warning: false
-        };
-        
-        // Camera
-        const camera = {
-            x: 0,
-            y: 0,
-            width: canvas.width,
-            height: canvas.height
-        };
-        
-        // Input state
-        const input = {
-            moveX: 0,
-            moveY: 0,
-            aimX: 0,
-            aimY: 0,
-            attacking: false,
-            skill: false,
-            ultimate: false
-        };
-        
-        // Joysticks
-        const moveJoystick = {
-            active: false,
-            originX: 0,
-            originY: 0,
-            maxDist: 35
-        };
-        
-        const attackJoystick = {
-            active: false,
-            originX: 0,
-            originY: 0,
-            maxDist: 35
-        };
-        
-        // Player
-        const player = {
-            x: MAP_SIZE / 2,
-            y: MAP_SIZE / 2,
-            radius: 25,
-            speed: 8.0,
-            health: 180,           // leaner pool — 1v1s are tight but winnable
-            maxHealth: 180,
-            baseHealth: 180,
-            damage: 110,
-            baseDamage: 110,
-            powerCubes: 0,
-            color: '#00a8ff',
-            angle: 0,
-            lastAttack: 0,
-            attackCooldown: 75,    // fast burst — 3 shots fire in ~0.15s
-            regenTimer: 0,
-            inPoison: false,
-            // Ammo System
-            ammo: 3,               // 3-shot burst
-            maxAmmo: 3,
-            reloadTimer: 0,
-            reloadTime: 38,        // ~0.63s per ammo
-            lastCombatTime: 0
-        };
-        
-        // Walls
-        const walls = [];
-        const numWalls = 250;
-        
-        for (let i = 0; i < numWalls; i++) {
-            walls.push({
-                x: Math.random() * (MAP_SIZE - 200) + 100,
-                y: Math.random() * (MAP_SIZE - 200) + 100,
-                width: Math.random() * 150 + 50,
-                height: Math.random() * 150 + 50
-            });
-        }
-        
-        // Projectiles
-        let projectiles = [];
-        
-        // Power Cubes & Boxes
-        const boxes = [];
-        const powerCubes = [];
-        const numBoxes = 60;
-        
-        for (let i = 0; i < numBoxes; i++) {
-            spawnBox();
-        }
-        
-        function spawnBox() {
-            let x, y, valid;
-            let attempts = 0;
-            do {
-                valid = true;
-                x = Math.random() * (MAP_SIZE - 100) + 50;
-                y = Math.random() * (MAP_SIZE - 100) + 50;
-                
-                for (let wall of walls) {
-                    if (x > wall.x - 50 && x < wall.x + wall.width + 50 &&
-                        y > wall.y - 50 && y < wall.y + wall.height + 50) {
-                        valid = false;
-                        break;
-                    }
-                }
-                attempts++;
-            } while (!valid && attempts < 100);
-            
-            boxes.push({
-                x: x,
-                y: y,
-                width: 40,
-                height: 40,
-                health: 30,
-                maxHealth: 30
-            });
-        }
-        
-        function spawnPowerCube(x, y) {
-            powerCubes.push({
-                x: x,
-                y: y,
-                radius: 12,
-                value: 1,
-                floatOffset: Math.random() * Math.PI * 2
-            });
-        }
-        
-        // Enemies with varied reload/ammo stats
-        const enemies = [];
-        const enemyTypes = [
-            // Tank: High HP, medium Dmg, slow but relentless
-            { name: 'Tank',    health: 600, speed: 4.8, damage: 45,  color: '#487eb0', radius: 30, attackPattern: 'single',  maxAmmo: 3, reloadTime: 65,  attackCooldown: 250 },
-            // Sniper: Fragile, high single-shot — repositions slowly
-            { name: 'Sniper',  health: 380, speed: 5.6, damage: 95,  color: '#e74c3c', radius: 20, attackPattern: 'sniper',  maxAmmo: 1, reloadTime: 100, attackCooldown: 250, sightRange: 900 },
-            // Shotgun: Close-range threat, creeps up on you
-            { name: 'Shotgun', health: 500, speed: 6.4, damage: 30,  color: '#f39c12', radius: 25, attackPattern: 'shotgun', maxAmmo: 4, reloadTime: 80,  attackCooldown: 275 },
-            // Volley: Deliberate pacer, punishes standing still
-            { name: 'Volley',  health: 460, speed: 5.6, damage: 28,  color: '#9b59b6', radius: 22, attackPattern: 'volley',  maxAmmo: 5, reloadTime: 55,  attackCooldown: 250 },
-            // Rapid: Fastest enemy but still measured — harass from mid-range
-            { name: 'Rapid',   health: 520, speed: 7.2, damage: 26,  color: '#2ecc71', radius: 23, attackPattern: 'rapid',   maxAmmo: 8, reloadTime: 35,  attackCooldown: 225 }
-        ];
-        
-        for (let i = 0; i < 10; i++) {
-            spawnEnemy();
-        }
-        
-        function spawnEnemy() {
-            const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-            let x, y, valid;
-            let attempts = 0;
-            
-            do {
-                valid = true;
-                x = Math.random() * (MAP_SIZE - 200) + 100;
-                y = Math.random() * (MAP_SIZE - 200) + 100;
-                
-                const distToPlayer = Math.hypot(x - player.x, y - player.y);
-                if (distToPlayer < 1500) valid = false;
-                
-                for (let wall of walls) {
-                    if (x > wall.x - 50 && x < wall.x + wall.width + 50 &&
-                        y > wall.y - 50 && y < wall.y + wall.height + 50) {
-                        valid = false;
-                        break;
-                    }
-                }
-                attempts++;
-            } while (!valid && attempts < 100);
-            
-            enemies.push({
-                x: x,
-                y: y,
-                ...type,
-                baseHealth: type.health,
-                baseDamage: type.damage,
-                maxHealth: type.health,
-                powerCubes: 0,
-                lastAttack: 0,
-                angle: 0,
-                state: 'roam',
-                roamTarget: { x: Math.random() * MAP_SIZE, y: Math.random() * MAP_SIZE },
-                roamTimer: 0,
-                regenTimer: 0,
-                inPoison: false,
-                lastCombatTime: 0,
-                // Pathfinding helpers
-                stuckTimer: 0,
-                strafeOffset: Math.random() * 100,
-                // Ammo System
-                ammo: type.maxAmmo,
-                reloadTimer: 0,
-                // Infighting
-                rivalTarget: null,      // enemy this NPC is currently fighting
-                rivalLockTimer: 0,      // how long to keep targeting the rival
-                teamId: null            // null = solo, string id = part of a team
-            });
-        }
-        
-        // ── Global multi-touch joystick router ──────────────────────────────
-        // Each touch is tracked by its identifier so both joysticks can be
-        // held simultaneously with different fingers.
+// Sound System
+const Sound = {
+enabled: true,
+ctx: null,
+init() {
+if (!this.ctx) {
+this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+}
+},
+play(frequency, duration, type = 'square', volume = 0.3) {
+if (!this.enabled || !this.ctx) return;
+const oscillator = this.ctx.createOscillator();
+const gainNode = this.ctx.createGain();
+oscillator.connect(gainNode);
+gainNode.connect(this.ctx.destination);
+oscillator.frequency.value = frequency;
+oscillator.type = type;
+gainNode.gain.setValueAtTime(volume, this.ctx.currentTime);
+gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+oscillator.start(this.ctx.currentTime);
+oscillator.stop(this.ctx.currentTime + duration);
+},
+shoot() {
+this.play(400, 0.1, 'square', 0.2);
+setTimeout(() => this.play(300, 0.1, 'square', 0.15), 50);
+},
+hit() {
+this.play(150, 0.15, 'sawtooth', 0.3);
+},
+collect() {
+this.play(800, 0.1, 'sine', 0.3);
+setTimeout(() => this.play(1000, 0.15, 'sine', 0.3), 100);
+},
+boxBreak() {
+this.play(200, 0.2, 'square', 0.4);
+setTimeout(() => this.play(150, 0.3, 'square', 0.3), 100);
+},
+poison() {
+this.play(100, 0.3, 'sawtooth', 0.2);
+},
+enemyDeath() {
+this.play(300, 0.2, 'square', 0.3);
+setTimeout(() => this.play(200, 0.3, 'square', 0.2), 150);
+},
+reload() {
+this.play(600, 0.05, 'sine', 0.1);
+},
+empty() {
+this.play(150, 0.05, 'square', 0.1);
+},
+toggle() {
+this.enabled = !this.enabled;
+document.getElementById('soundToggle').textContent = this.enabled ? '🔊' : '🔇';
+}
+};
 
-        const moveEl   = document.getElementById('movement-joystick');
-        const moveKnob = document.getElementById('moveKnob');
-        const atkEl    = document.getElementById('attack-joystick');
-        const atkKnob  = document.getElementById('attackKnob');
+// Game state
+let gameRunning = true;
+let autoFire = false;
 
-        // Which touch identifier is currently driving each joystick (-1 = none)
-        let moveTouchId = -1;
-        let atkTouchId  = -1;
+// Poison Zone
+const poisonZone = {
+radius: MAP_SIZE * 0.7,
+minRadius: 500,
+shrinkRate: 1.0,
+damage: 0.5,
+shrinking: false,
+shrinkDelay: 150,
+warning: false
+};
 
-        // Attack joystick drag state
-        const TAP_THRESHOLD = 12;
-        let atkStartX = 0, atkStartY = 0, atkDragged = false;
+// Camera
+const camera = {
+x: 0,
+y: 0,
+width: canvas.width,
+height: canvas.height
+};
 
-        function updateJoystick(clientX, clientY, joystick, knob, callback) {
-            const dx = clientX - joystick.originX;
-            const dy = clientY - joystick.originY;
-            const dist = Math.min(Math.hypot(dx, dy), joystick.maxDist);
-            const angle = Math.atan2(dy, dx);
-            const knobX = Math.cos(angle) * dist;
-            const knobY = Math.sin(angle) * dist;
-            knob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
-            if (callback) callback(knobX / joystick.maxDist, knobY / joystick.maxDist);
-        }
+// Input state
+const input = {
+moveX: 0,
+moveY: 0,
+aimX: 0,
+aimY: 0,
+attacking: false,
+skill: false,
+ultimate: false
+};
 
-        function findNearestEnemy() {
-            let nearest = null, nearestDist = Infinity;
-            for (let e of enemies) {
-                const d = Math.hypot(e.x - player.x, e.y - player.y);
-                if (d < nearestDist) { nearestDist = d; nearest = e; }
-            }
-            return nearest;
-        }
+// Joysticks
+const moveJoystick = {
+active: false,
+originX: 0,
+originY: 0,
+maxDist: 35
+};
+const attackJoystick = {
+active: false,
+originX: 0,
+originY: 0,
+maxDist: 35
+};
 
-        function rectContains(el, x, y) {
-            const r = el.getBoundingClientRect();
-            return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-        }
+// Player
+const player = {
+x: MAP_SIZE / 2,
+y: MAP_SIZE / 2,
+radius: 25,
+speed: 8.0,
+health: 180,
+maxHealth: 180,
+baseHealth: 180,
+damage: 110,
+baseDamage: 110,
+powerCubes: 0,
+color: '#00a8ff',
+angle: 0,
+lastAttack: 0,
+attackCooldown: 75,
+regenTimer: 0,
+inPoison: false,
+ammo: 3,
+maxAmmo: 3,
+reloadTimer: 0,
+reloadTime: 38,
+lastCombatTime: 0
+};
 
-        document.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            Sound.init();
-            for (let touch of e.changedTouches) {
-                const cx = touch.clientX, cy = touch.clientY;
+// Walls - FIXED: Safe spawn logic
+const walls = [];
+const numWalls = 250;
+for (let i = 0; i < numWalls; i++) {
+let wx, wy, ww, wh;
+let valid = false;
+let attempts = 0;
+while (!valid && attempts < 100) {
+wx = Math.random() * (MAP_SIZE - 200) + 100;
+wy = Math.random() * (MAP_SIZE - 200) + 100;
+ww = Math.random() * 150 + 50;
+wh = Math.random() * 150 + 50;
+attempts++;
+valid = true;
+// Check distance from center spawn (5000, 5000)
+const distToCenter = Math.hypot(wx - MAP_SIZE/2, wy - MAP_SIZE/2);
+if (distToCenter < 400) valid = false; // Keep center clear for player
+}
+walls.push({ x: wx, y: wy, width: ww, height: wh });
+}
 
-                // Claim move joystick
-                if (moveTouchId === -1 && rectContains(moveEl, cx, cy)) {
-                    moveTouchId = touch.identifier;
-                    const r = moveEl.getBoundingClientRect();
-                    moveJoystick.active = true;
-                    moveJoystick.originX = r.left + r.width / 2;
-                    moveJoystick.originY = r.top  + r.height / 2;
-                    updateJoystick(cx, cy, moveJoystick, moveKnob,
-                        (x, y) => { input.moveX = x; input.moveY = y; });
-                    continue;
-                }
+// Projectiles
+let projectiles = [];
 
-                // Claim attack joystick
-                if (atkTouchId === -1 && rectContains(atkEl, cx, cy)) {
-                    atkTouchId  = touch.identifier;
-                    atkStartX   = cx; atkStartY = cy; atkDragged = false;
-                    const r = atkEl.getBoundingClientRect();
-                    attackJoystick.active = true;
-                    attackJoystick.originX = r.left + r.width / 2;
-                    attackJoystick.originY = r.top  + r.height / 2;
-                    continue;
-                }
-            }
-        }, { passive: false });
+// Power Cubes & Boxes
+const boxes = [];
+const powerCubes = [];
+const numBoxes = 60;
+for (let i = 0; i < numBoxes; i++) {
+spawnBox();
+}
 
-        document.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            for (let touch of e.changedTouches) {
-                const cx = touch.clientX, cy = touch.clientY;
+function spawnBox() {
+let x, y, valid;
+let attempts = 0;
+do {
+valid = true;
+x = Math.random() * (MAP_SIZE - 100) + 50;
+y = Math.random() * (MAP_SIZE - 100) + 50;
+for (let wall of walls) {
+if (x > wall.x - 50 && x < wall.x + wall.width + 50 &&
+y > wall.y - 50 && y < wall.y + wall.height + 50) {
+valid = false;
+break;
+}
+}
+attempts++;
+} while (!valid && attempts < 100);
+boxes.push({
+x: x,
+y: y,
+width: 40,
+height: 40,
+health: 30,
+maxHealth: 30
+});
+}
 
-                if (touch.identifier === moveTouchId) {
-                    updateJoystick(cx, cy, moveJoystick, moveKnob,
-                        (x, y) => { input.moveX = x; input.moveY = y; });
-                }
+function spawnPowerCube(x, y) {
+powerCubes.push({
+x: x,
+y: y,
+radius: 12,
+value: 1,
+floatOffset: Math.random() * Math.PI * 2
+});
+}
 
-                if (touch.identifier === atkTouchId) {
-                    if (Math.hypot(cx - atkStartX, cy - atkStartY) > TAP_THRESHOLD) {
-                        atkDragged = true;
-                    }
-                    if (atkDragged) {
-                        updateJoystick(cx, cy, attackJoystick, atkKnob, (x, y) => {
-                            input.aimX = x; input.aimY = y;
-                            if (x !== 0 || y !== 0) player.angle = Math.atan2(y, x);
-                        });
-                    }
-                }
-            }
-        }, { passive: false });
+// Enemies with varied reload/ammo stats
+const enemies = [];
+const enemyTypes = [
+{ name: 'Tank', health: 600, speed: 4.8, damage: 45, color: '#487eb0', radius: 30, attackPattern: 'single', maxAmmo: 3, reloadTime: 65, attackCooldown: 250 },
+{ name: 'Sniper', health: 380, speed: 5.6, damage: 95, color: '#e74c3c', radius: 20, attackPattern: 'sniper', maxAmmo: 1, reloadTime: 100, attackCooldown: 250, sightRange: 900 },
+{ name: 'Shotgun', health: 500, speed: 6.4, damage: 30, color: '#f39c12', radius: 25, attackPattern: 'shotgun', maxAmmo: 4, reloadTime: 80, attackCooldown: 275 },
+{ name: 'Volley', health: 460, speed: 5.6, damage: 28, color: '#9b59b6', radius: 22, attackPattern: 'volley', maxAmmo: 5, reloadTime: 55, attackCooldown: 250 },
+{ name: 'Rapid', health: 520, speed: 7.2, damage: 26, color: '#2ecc71', radius: 23, attackPattern: 'rapid', maxAmmo: 8, reloadTime: 35, attackCooldown: 225 }
+];
 
-        document.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            for (let touch of e.changedTouches) {
-                if (touch.identifier === moveTouchId) {
-                    moveTouchId = -1;
-                    moveJoystick.active = false;
-                    moveKnob.style.transform = 'translate(-50%, -50%)';
-                    input.moveX = 0; input.moveY = 0;
-                }
+for (let i = 0; i < 10; i++) {
+spawnEnemy();
+}
 
-                if (touch.identifier === atkTouchId) {
-                    atkTouchId = -1;
-                    attackJoystick.active = false;
-                    atkKnob.style.transform = 'translate(-50%, -50%)';
+function spawnEnemy() {
+const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+let x, y, valid;
+let attempts = 0;
+const safeSpawnRadius = poisonZone.radius * 0.5;
+do {
+valid = true;
+const angle = Math.random() * Math.PI * 2;
+const dist = Math.random() * safeSpawnRadius;
+x = (MAP_SIZE/2) + Math.cos(angle) * dist;
+y = (MAP_SIZE/2) + Math.sin(angle) * dist;
 
-                    if (!atkDragged) {
-                        // TAP → auto-aim at nearest enemy and fire
-                        const target = findNearestEnemy();
-                        if (target) {
-                            const angle = Math.atan2(target.y - player.y, target.x - player.x);
-                            player.angle = angle;
-                            input.aimX = Math.cos(angle);
-                            input.aimY = Math.sin(angle);
-                        }
-                        input.attacking = true;
-                        shoot(player, true, 'single');
-                        setTimeout(() => { input.attacking = false; }, 80);
-                    } else {
-                        // DRAG → fire in dragged direction then clear aim
-                        input.attacking = true;
-                        shoot(player, true, 'single');
-                        setTimeout(() => {
-                            input.attacking = false;
-                            input.aimX = 0; input.aimY = 0;
-                        }, 80);
-                    }
-                    atkDragged = false;
-                }
-            }
-        }, { passive: false });
+const distToPlayer = Math.hypot(x - player.x, y - player.y);
+if (distToPlayer < 1500) valid = false;
+for (let wall of walls) {
+if (x > wall.x - 50 && x < wall.x + wall.width + 50 &&
+y > wall.y - 50 && y < wall.y + wall.height + 50) {
+valid = false;
+break;
+}
+}
+attempts++;
+} while (!valid && attempts < 100);
+enemies.push({
+x: x,
+y: y,
+...type,
+baseHealth: type.health,
+baseDamage: type.damage,
+maxHealth: type.health,
+powerCubes: 0,
+lastAttack: 0,
+angle: 0,
+state: 'roam',
+roamTarget: { x: Math.random() * MAP_SIZE, y: Math.random() * MAP_SIZE },
+roamTimer: 0,
+regenTimer: 0,
+inPoison: false,
+lastCombatTime: 0,
+stuckTimer: 0,
+strafeOffset: Math.random() * 100,
+ammo: type.maxAmmo,
+reloadTimer: 0,
+rivalTarget: null,
+rivalLockTimer: 0,
+teamId: null
+});
+}
 
-        document.addEventListener('touchcancel', (e) => {
-            for (let touch of e.changedTouches) {
-                if (touch.identifier === moveTouchId) {
-                    moveTouchId = -1; moveJoystick.active = false;
-                    moveKnob.style.transform = 'translate(-50%, -50%)';
-                    input.moveX = 0; input.moveY = 0;
-                }
-                if (touch.identifier === atkTouchId) {
-                    atkTouchId = -1; attackJoystick.active = false;
-                    atkKnob.style.transform = 'translate(-50%, -50%)';
-                    input.attacking = false; atkDragged = false;
-                }
-            }
-        }, { passive: false });
-        
-        // Sound toggle
-        document.getElementById('soundToggle').addEventListener('click', () => {
-            Sound.init();
-            Sound.toggle();
-        });
-        
-        // Keyboard controls
-        const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.key] = true);
-        window.addEventListener('keyup', (e) => keys[e.key] = false);
-        
-        canvas.addEventListener('mousedown', () => { Sound.init(); input.attacking = true; });
-        canvas.addEventListener('mouseup', () => input.attacking = false);
-        canvas.addEventListener('mousemove', (e) => {
-            if (!attackJoystick.active) {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left + camera.x;
-                const mouseY = e.clientY - rect.top + camera.y;
-                player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-                input.aimX = Math.cos(player.angle);
-                input.aimY = Math.sin(player.angle);
-            }
-        });
-        
-        // Collision detection
-        function checkWallCollision(x, y, radius) {
-            for (let wall of walls) {
-                const closestX = Math.max(wall.x, Math.min(x, wall.x + wall.width));
-                const closestY = Math.max(wall.y, Math.min(y, wall.y + wall.height));
-                const distX = x - closestX;
-                const distY = y - closestY;
-                
-                if (Math.hypot(distX, distY) < radius) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        
-        function isInPoison(x, y) {
-            const centerX = MAP_SIZE / 2;
-            const centerY = MAP_SIZE / 2;
-            const dist = Math.hypot(x - centerX, y - centerY);
-            return dist > poisonZone.radius;
-        }
-        
-        // Shoot projectile
-        function shoot(shooter, isPlayer, pattern = 'single') {
-            const now = Date.now();
-            
-            // Ammo Check
-            if (shooter.ammo <= 0) {
-                if (isPlayer) Sound.empty();
-                return; 
-            }
-            
-            // Cooldown Check
-            if (now - shooter.lastAttack < shooter.attackCooldown) return;
-            
-            // Consume Ammo
-            shooter.ammo--;
-            shooter.lastAttack = now;
-            shooter.lastCombatTime = now;
-            
-            if (isPlayer) {
-                Sound.shoot();
-                if (shooter.ammo === 0) Sound.empty();
-            }
-            
-            const baseSpeed = isPlayer ? 24 : 14;
-            const damage = shooter.damage;
-            const shooterRef = isPlayer ? null : shooter;
-            
-            if (pattern === 'single' || pattern === 'sniper') {
-                projectiles.push({
-                    x: shooter.x, y: shooter.y,
-                    vx: Math.cos(shooter.angle) * baseSpeed,
-                    vy: Math.sin(shooter.angle) * baseSpeed,
-                    radius: isPlayer ? 6 : 8,
-                    damage: damage,
-                    isPlayer: isPlayer,
-                    shooter: shooterRef,
-                    color: isPlayer ? '#00ff88' : '#ff4444'
-                });
-            } else if (pattern === 'shotgun') {
-                for (let i = -2; i <= 2; i++) {
-                    const angle = shooter.angle + i * 0.2;
-                    projectiles.push({
-                        x: shooter.x, y: shooter.y,
-                        vx: Math.cos(angle) * baseSpeed,
-                        vy: Math.sin(angle) * baseSpeed,
-                        radius: 5,
-                        damage: damage * 0.7,
-                        isPlayer: isPlayer,
-                        shooter: shooterRef,
-                        color: '#ffaa00'
-                    });
-                }
-            } else if (pattern === 'volley') {
-                for (let i = 0; i < 5; i++) {
-                    setTimeout(() => {
-                        const angle = shooter.angle + (i - 2) * 0.15;
-                        projectiles.push({
-                            x: shooter.x, y: shooter.y,
-                            vx: Math.cos(angle) * baseSpeed,
-                            vy: Math.sin(angle) * baseSpeed,
-                            radius: 6,
-                            damage: damage,
-                            isPlayer: isPlayer,
-                            shooter: shooterRef,
-                            color: '#aa00ff'
-                        });
-                    }, i * 100);
-                }
-            } else if (pattern === 'rapid') {
-                projectiles.push({
-                    x: shooter.x, y: shooter.y,
-                    vx: Math.cos(shooter.angle) * baseSpeed * 1.3,
-                    vy: Math.sin(shooter.angle) * baseSpeed * 1.3,
-                    radius: 4,
-                    damage: damage * 0.8,
-                    isPlayer: isPlayer,
-                    shooter: shooterRef,
-                    color: '#00ffaa'
-                });
-            }
-        }
-        
-        function collectPowerCube(entity) {
-            entity.powerCubes++;
-            // +20 Health, +6% Damage per cube
-            entity.maxHealth += 20;
-            entity.health = Math.min(entity.health + 20, entity.maxHealth);
-            entity.damage = entity.baseDamage * (1 + (entity.powerCubes * 0.06));
-            
-            entity.radius = Math.min(entity.radius + 0.5, 40);
-            
-            if (entity.isPlayer) {
-                entity.ammo = entity.maxAmmo;
-            }
-            
-            Sound.collect();
-            
-            if (!entity.isPlayer) {
-                updateEnemyHealthBar();
-            } else {
-                document.getElementById('cubeCount').textContent = entity.powerCubes;
-            }
-        }
-        
-        // Core movement primitive: apply a (vx, vy) velocity to an entity with
-        // full wall-sliding and immediate unstuck logic. Returns true if moved.
-        function applyMovement(entity, vx, vy) {
-            if (vx === 0 && vy === 0) return false;
+// ── Global multi-touch joystick router ──────────────────────────────
+const moveEl = document.getElementById('movement-joystick');
+const moveKnob = document.getElementById('moveKnob');
+const atkEl = document.getElementById('attack-joystick');
+const atkKnob = document.getElementById('attackKnob');
+let moveTouchId = -1;
+let atkTouchId = -1;
+const TAP_THRESHOLD = 12;
+let atkStartX = 0, atkStartY = 0, atkDragged = false;
 
-            const r = entity.radius;
-            let moved = false;
+function updateJoystick(clientX, clientY, joystick, knob, callback) {
+const dx = clientX - joystick.originX;
+const dy = clientY - joystick.originY;
+const dist = Math.min(Math.hypot(dx, dy), joystick.maxDist);
+const angle = Math.atan2(dy, dx);
+const knobX = Math.cos(angle) * dist;
+const knobY = Math.sin(angle) * dist;
+knob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+if (callback) callback(knobX / joystick.maxDist, knobY / joystick.maxDist);
+}
 
-            // --- Axis-separated sliding ---
-            // Try full move
-            const fullX = entity.x + vx;
-            const fullY = entity.y + vy;
-            if (!checkWallCollision(fullX, fullY, r)) {
-                entity.x = Math.max(r, Math.min(MAP_SIZE - r, fullX));
-                entity.y = Math.max(r, Math.min(MAP_SIZE - r, fullY));
-                entity.stuckTimer = 0;
-                return true;
-            }
+function findNearestEnemy() {
+let nearest = null, nearestDist = Infinity;
+for (let e of enemies) {
+const d = Math.hypot(e.x - player.x, e.y - player.y);
+if (d < nearestDist) { nearestDist = d; nearest = e; }
+}
+return nearest;
+}
 
-            // Try X only (slide along Y wall)
-            const onlyX = entity.x + vx;
-            if (!checkWallCollision(onlyX, entity.y, r)) {
-                entity.x = Math.max(r, Math.min(MAP_SIZE - r, onlyX));
-                entity.stuckTimer = 0;
-                moved = true;
-            }
+function rectContains(el, x, y) {
+const r = el.getBoundingClientRect();
+return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
 
-            // Try Y only (slide along X wall)
-            const onlyY = entity.y + vy;
-            if (!checkWallCollision(entity.x, onlyY, r)) {
-                entity.y = Math.max(r, Math.min(MAP_SIZE - r, onlyY));
-                entity.stuckTimer = 0;
-                moved = true;
-            }
+document.addEventListener('touchstart', (e) => {
+e.preventDefault();
+Sound.init();
+for (let touch of e.changedTouches) {
+const cx = touch.clientX, cy = touch.clientY;
+if (moveTouchId === -1 && rectContains(moveEl, cx, cy)) {
+moveTouchId = touch.identifier;
+const r = moveEl.getBoundingClientRect();
+moveJoystick.active = true;
+moveJoystick.originX = r.left + r.width / 2;
+moveJoystick.originY = r.top + r.height / 2;
+updateJoystick(cx, cy, moveJoystick, moveKnob, (x, y) => { input.moveX = x; input.moveY = y; });
+continue;
+}
+if (atkTouchId === -1 && rectContains(atkEl, cx, cy)) {
+atkTouchId = touch.identifier;
+atkStartX = cx; atkStartY = cy; atkDragged = false;
+const r = atkEl.getBoundingClientRect();
+attackJoystick.active = true;
+attackJoystick.originX = r.left + r.width / 2;
+attackJoystick.originY = r.top + r.height / 2;
+continue;
+}
+}
+}, { passive: false });
 
-            if (moved) return true;
+document.addEventListener('touchmove', (e) => {
+e.preventDefault();
+for (let touch of e.changedTouches) {
+const cx = touch.clientX, cy = touch.clientY;
+if (touch.identifier === moveTouchId) {
+updateJoystick(cx, cy, moveJoystick, moveKnob, (x, y) => { input.moveX = x; input.moveY = y; });
+}
+if (touch.identifier === atkTouchId) {
+if (Math.hypot(cx - atkStartX, cy - atkStartY) > TAP_THRESHOLD) {
+atkDragged = true;
+}
+if (atkDragged) {
+updateJoystick(cx, cy, attackJoystick, atkKnob, (x, y) => {
+input.aimX = x; input.aimY = y;
+if (x !== 0 || y !== 0) player.angle = Math.atan2(y, x);
+});
+}
+}
+}
+}, { passive: false });
 
-            // Fully blocked — immediate unstuck: scan 16 evenly spaced escape angles
-            entity.stuckTimer++;
-            const baseAngle = Math.atan2(vy, vx);
-            const speed = Math.hypot(vx, vy);
-            for (let i = 1; i <= 16; i++) {
-                const side = (i % 2 === 0) ? 1 : -1;
-                const offset = Math.ceil(i / 2) * (Math.PI / 8);
-                const tryAngle = baseAngle + side * offset;
-                const tx = entity.x + Math.cos(tryAngle) * speed;
-                const ty = entity.y + Math.sin(tryAngle) * speed;
-                if (!checkWallCollision(tx, ty, r)) {
-                    entity.x = Math.max(r, Math.min(MAP_SIZE - r, tx));
-                    entity.y = Math.max(r, Math.min(MAP_SIZE - r, ty));
-                    entity.stuckTimer = 0;
-                    return true;
-                }
-            }
-            // Last resort: nudge away from nearest wall overlap
-            if (entity.stuckTimer > 10) {
-                for (let wall of walls) {
-                    const cx = Math.max(wall.x, Math.min(entity.x, wall.x + wall.width));
-                    const cy = Math.max(wall.y, Math.min(entity.y, wall.y + wall.height));
-                    const dx = entity.x - cx;
-                    const dy = entity.y - cy;
-                    const d = Math.hypot(dx, dy);
-                    if (d < r && d > 0) {
-                        entity.x += (dx / d) * (r - d + 1);
-                        entity.y += (dy / d) * (r - d + 1);
-                        entity.stuckTimer = 0;
-                        break;
-                    }
-                }
-            }
-            return false;
-        }
+document.addEventListener('touchend', (e) => {
+e.preventDefault();
+for (let touch of e.changedTouches) {
+if (touch.identifier === moveTouchId) {
+moveTouchId = -1;
+moveJoystick.active = false;
+moveKnob.style.transform = 'translate(-50%, -50%)';
+input.moveX = 0; input.moveY = 0;
+}
+if (touch.identifier === atkTouchId) {
+atkTouchId = -1;
+attackJoystick.active = false;
+atkKnob.style.transform = 'translate(-50%, -50%)';
+if (!atkDragged) {
+const target = findNearestEnemy();
+if (target) {
+const angle = Math.atan2(target.y - player.y, target.x - player.x);
+player.angle = angle;
+input.aimX = Math.cos(angle);
+input.aimY = Math.sin(angle);
+}
+input.attacking = true;
+setTimeout(() => { input.attacking = false; }, 100);
+} else {
+input.attacking = true;
+setTimeout(() => {
+input.attacking = false;
+input.aimX = 0; input.aimY = 0;
+}, 100);
+}
+atkDragged = false;
+}
+}
+}, { passive: false });
 
-        // Flee away from player with wall-aware pathfinding.
-        // Scans directions immediately — no delay before rerouting.
-        function fleeFromPlayer(enemy, fleeAngle) {
-            const speed = enemy.speed * 1.1;
+document.addEventListener('touchcancel', (e) => {
+for (let touch of e.changedTouches) {
+if (touch.identifier === moveTouchId) {
+moveTouchId = -1; moveJoystick.active = false;
+moveKnob.style.transform = 'translate(-50%, -50%)';
+input.moveX = 0; input.moveY = 0;
+}
+if (touch.identifier === atkTouchId) {
+atkTouchId = -1; attackJoystick.active = false;
+atkKnob.style.transform = 'translate(-50%, -50%)';
+input.attacking = false; atkDragged = false;
+}
+}
+}, { passive: false });
 
-            // Score each candidate direction: maximise distance from player, prefer
-            // angles close to the true flee angle, reject gas and walls.
-            let bestVx = 0, bestVy = 0, bestScore = -Infinity;
-            const steps = 24;
-            for (let i = 0; i < steps; i++) {
-                const side = (i % 2 === 0) ? 1 : -1;
-                const offset = Math.ceil(i / 2) * (Math.PI / (steps / 2));
-                const angle = fleeAngle + side * offset;
-                const tx = enemy.x + Math.cos(angle) * speed;
-                const ty = enemy.y + Math.sin(angle) * speed;
-                if (checkWallCollision(tx, ty, enemy.radius)) continue;
-                if (isInPoison(tx, ty)) continue;
-                const distFromPlayer = Math.hypot(tx - player.x, ty - player.y);
-                // Penalise large angular deviation from ideal flee angle
-                const score = distFromPlayer - Math.abs(offset) * 80;
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestVx = Math.cos(angle) * speed;
-                    bestVy = Math.sin(angle) * speed;
-                }
-            }
+document.getElementById('soundToggle').addEventListener('click', () => {
+Sound.init();
+Sound.toggle();
+});
 
-            // i=0 is the raw flee direction itself — include it
-            const tx0 = enemy.x + Math.cos(fleeAngle) * speed;
-            const ty0 = enemy.y + Math.sin(fleeAngle) * speed;
-            if (!checkWallCollision(tx0, ty0, enemy.radius) && !isInPoison(tx0, ty0)) {
-                const d0 = Math.hypot(tx0 - player.x, ty0 - player.y);
-                if (d0 > bestScore + 80 * 0) { bestVx = Math.cos(fleeAngle) * speed; bestVy = Math.sin(fleeAngle) * speed; }
-            }
+// Keyboard controls
+const keys = {};
+window.addEventListener('keydown', (e) => keys[e.key] = true);
+window.addEventListener('keyup', (e) => keys[e.key] = false);
+canvas.addEventListener('mousedown', () => { Sound.init(); input.attacking = true; });
+canvas.addEventListener('mouseup', () => input.attacking = false);
+canvas.addEventListener('mousemove', (e) => {
+if (!attackJoystick.active) {
+const rect = canvas.getBoundingClientRect();
+const mouseX = e.clientX - rect.left + camera.x;
+const mouseY = e.clientY - rect.top + camera.y;
+player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+input.aimX = Math.cos(player.angle);
+input.aimY = Math.sin(player.angle);
+}
+});
 
-            applyMovement(enemy, bestVx, bestVy);
-        }
+// Collision detection
+function checkWallCollision(x, y, radius) {
+for (let wall of walls) {
+const closestX = Math.max(wall.x, Math.min(x, wall.x + wall.width));
+const closestY = Math.max(wall.y, Math.min(y, wall.y + wall.height));
+const distX = x - closestX;
+const distY = y - closestY;
+if (Math.hypot(distX, distY) < radius) {
+return true;
+}
+}
+return false;
+}
 
-        // Advanced Enemy Movement with Pathfinding
-        function moveEnemy(enemy, targetX, targetY, speed) {
-            if (speed === 0) return;
+function isInPoison(x, y) {
+const centerX = MAP_SIZE / 2;
+const centerY = MAP_SIZE / 2;
+const dist = Math.hypot(x - centerX, y - centerY);
+return dist > poisonZone.radius;
+}
 
-            let vx = 0, vy = 0;
-            const dx = targetX - enemy.x;
-            const dy = targetY - enemy.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist === 0) return;
+function getPoisonEdgeDistance(x, y) {
+const centerX = MAP_SIZE / 2;
+const centerY = MAP_SIZE / 2;
+const distToCenter = Math.hypot(x - centerX, y - centerY);
+return poisonZone.radius - distToCenter;
+}
 
-            // 1. Storm Avoidance (Highest Priority)
-            if (isInPoison(enemy.x, enemy.y)) {
-                const centerX = MAP_SIZE / 2;
-                const centerY = MAP_SIZE / 2;
-                const angle = Math.atan2(centerY - enemy.y, centerX - enemy.x);
-                vx = Math.cos(angle) * speed * 1.5;
-                vy = Math.sin(angle) * speed * 1.5;
-            } else {
-                vx = (dx / dist) * speed;
-                vy = (dy / dist) * speed;
-            }
+// Shoot projectile
+function shoot(shooter, isPlayer, pattern = 'single') {
+const now = Date.now();
+if (shooter.ammo <= 0) {
+if (isPlayer) Sound.empty();
+return;
+}
+if (now - shooter.lastAttack < shooter.attackCooldown) return;
 
-            // 2. Strafing (attacking state) — computed separately and applied only
-            //    if the strafe step itself doesn't enter a wall
-            if (enemy.state === 'attack' && !isInPoison(enemy.x, enemy.y)) {
-                const time = Date.now() / 500;
-                const strafeAmt = Math.sin(time + enemy.strafeOffset) * 2;
-                const strafeAngle = Math.atan2(vy, vx) + Math.PI / 2;
-                const svx = Math.cos(strafeAngle) * strafeAmt;
-                const svy = Math.sin(strafeAngle) * strafeAmt;
-                // Only apply strafe if it doesn't push into a wall
-                if (!checkWallCollision(enemy.x + svx, enemy.y + svy, enemy.radius)) {
-                    enemy.x += svx;
-                    enemy.y += svy;
-                }
-            }
+shooter.ammo--;
+shooter.lastAttack = now;
+shooter.lastCombatTime = now;
 
-            applyMovement(enemy, vx, vy);
-        }
-        
-        // Update game
-        function update() {
-            if (!gameRunning) return;
-            
-            const now = Date.now();
+if (isPlayer) {
+Sound.shoot();
+if (shooter.ammo === 0) Sound.empty();
+}
 
-            // ── Teaming system ───────────────────────────────────────────────
-            // Team chance scales with how far into the game we are:
-            // early (10 enemies) → ~5% chance per tick, late (1-2 enemies) → ~90%
-            if (!update.nextTeamTick) update.nextTeamTick = now + 8000;
-            if (now > update.nextTeamTick) {
-                const totalEnemies = 10; // starting count
-                const remaining = enemies.length;
-                // Progress from 0 (full lobby) to 1 (last enemy standing)
-                const progress = Math.max(0, (totalEnemies - remaining) / (totalEnemies - 1));
-                // Team chance: 5% early → 90% late (exponential curve)
-                const teamChance = 0.05 + 0.85 * Math.pow(progress, 1.5);
+const baseSpeed = isPlayer ? 24 : 14;
+const damage = shooter.damage;
+const shooterRef = isPlayer ? null : shooter;
 
-                // Tick interval also shortens as game progresses: 10s → 3s
-                update.nextTeamTick = now + (10000 - 7000 * progress);
+if (pattern === 'single' || pattern === 'sniper') {
+projectiles.push({ x: shooter.x, y: shooter.y, vx: Math.cos(shooter.angle) * baseSpeed, vy: Math.sin(shooter.angle) * baseSpeed, radius: isPlayer ? 6 : 8, damage: damage, isPlayer: isPlayer, shooter: shooterRef, color: isPlayer ? '#00ff88' : '#ff4444' });
+} else if (pattern === 'shotgun') {
+for (let i = -2; i <= 2; i++) {
+const angle = shooter.angle + i * 0.2;
+projectiles.push({ x: shooter.x, y: shooter.y, vx: Math.cos(angle) * baseSpeed, vy: Math.sin(angle) * baseSpeed, radius: 5, damage: damage * 0.7, isPlayer: isPlayer, shooter: shooterRef, color: '#ffaa00' });
+}
+} else if (pattern === 'volley') {
+for (let i = 0; i < 5; i++) {
+setTimeout(() => {
+if(!gameRunning && !isPlayer) return;
+const angle = shooter.angle + (i - 2) * 0.15;
+projectiles.push({ x: shooter.x, y: shooter.y, vx: Math.cos(angle) * baseSpeed, vy: Math.sin(angle) * baseSpeed, radius: 6, damage: damage, isPlayer: isPlayer, shooter: shooterRef, color: '#aa00ff' });
+}, i * 100);
+}
+} else if (pattern === 'rapid') {
+projectiles.push({ x: shooter.x, y: shooter.y, vx: Math.cos(shooter.angle) * baseSpeed * 1.3, vy: Math.sin(shooter.angle) * baseSpeed * 1.3, radius: 4, damage: damage * 0.8, isPlayer: isPlayer, shooter: shooterRef, color: '#00ffaa' });
+}
+}
 
-                if (Math.random() < teamChance) {
-                    const solos = enemies.filter(e => !e.teamId);
-                    if (solos.length >= 3) {
-                        const seed = solos[Math.floor(Math.random() * solos.length)];
-                        const nearby = solos
-                            .filter(e => e !== seed && Math.hypot(e.x - seed.x, e.y - seed.y) < 2000)
-                            .slice(0, 2 + Math.floor(Math.random() * 2));
+function collectPowerCube(entity) {
+entity.powerCubes++;
+entity.maxHealth += 20;
+entity.health = Math.min(entity.health + 20, entity.maxHealth);
+entity.damage = entity.baseDamage * (1 + (entity.powerCubes * 0.06));
+entity.radius = Math.min(entity.radius + 0.5, 40);
+if (entity.isPlayer) {
+entity.ammo = entity.maxAmmo;
+}
+Sound.collect();
+if (!entity.isPlayer) {
+updateEnemyHealthBar();
+} else {
+document.getElementById('cubeCount').textContent = entity.powerCubes;
+}
+}
 
-                        if (nearby.length >= 2) {
-                            const teamId = 'team_' + now;
-                            const members = [seed, ...nearby];
-                            members.forEach(e => {
-                                e.teamId = teamId;
-                                e.rivalTarget = null;
-                                e.rivalLockTimer = 0;
-                            });
+// Core movement primitive
+function applyMovement(entity, vx, vy) {
+if (vx === 0 && vy === 0) return false;
+const r = entity.radius;
+let moved = false;
 
-                            // Teams last 15-25s early, 8-15s late (more volatile end-game)
-                            const duration = (15000 - 7000 * progress) + Math.random() * 10000;
-                            setTimeout(() => {
-                                members.forEach(e => {
-                                    if (enemies.includes(e) && e.teamId === teamId) {
-                                        e.teamId = null;
-                                    }
-                                });
-                            }, duration);
-                        }
-                    }
-                }
-            }
-            
-            // Update Poison Zone
-            if (poisonZone.radius > poisonZone.minRadius) {
-                poisonZone.shrinkDelay--;
-                if (poisonZone.shrinkDelay <= 0) {
-                    poisonZone.shrinking = true;
-                    poisonZone.radius -= poisonZone.shrinkRate;
-                    
-                    if (poisonZone.radius < MAP_SIZE * 0.3 && !poisonZone.warning) {
-                        poisonZone.warning = true;
-                        document.getElementById('poisonWarning').style.display = 'block';
-                        setTimeout(() => {
-                            document.getElementById('poisonWarning').style.display = 'none';
-                        }, 3000);
-                    }
-                }
-            }
-            
-            const zonePercent = Math.round((poisonZone.radius / (MAP_SIZE * 0.7)) * 100);
-            document.getElementById('zoneSize').textContent = zonePercent;
-            
-            // Keyboard input
-            if (!moveJoystick.active) {
-                input.moveX = 0;
-                input.moveY = 0;
-                if (keys['w'] || keys['W']) input.moveY = -1;
-                if (keys['s'] || keys['S']) input.moveY = 1;
-                if (keys['a'] || keys['A']) input.moveX = -1;
-                if (keys['d'] || keys['D']) input.moveX = 1;
-            }
-            
-            // Move player (normalize diagonal movement to prevent speed boost)
-            const moveMag = Math.hypot(input.moveX, input.moveY);
-            const normMoveX = moveMag > 0 ? input.moveX / moveMag : 0;
-            const normMoveY = moveMag > 0 ? input.moveY / moveMag : 0;
-            const newX = player.x + normMoveX * player.speed;
-            const newY = player.y + normMoveY * player.speed;
-            
-            if (!checkWallCollision(newX, player.y, player.radius)) {
-                player.x = Math.max(player.radius, Math.min(MAP_SIZE - player.radius, newX));
-            }
-            if (!checkWallCollision(player.x, newY, player.radius)) {
-                player.y = Math.max(player.radius, Math.min(MAP_SIZE - player.radius, newY));
-            }
-            
-            // Update camera
-            camera.x = player.x - canvas.width / 2;
-            camera.y = player.y - canvas.height / 2;
-            camera.x = Math.max(0, Math.min(MAP_SIZE - canvas.width, camera.x));
-            camera.y = Math.max(0, Math.min(MAP_SIZE - canvas.height, camera.y));
-            
-            if (input.aimX !== 0 || input.aimY !== 0) {
-                player.angle = Math.atan2(input.aimY, input.aimX);
-            }
-            
-            if ((input.attacking) && (input.aimX !== 0 || input.aimY !== 0)) {
-                shoot(player, true, 'single');
-            }
-            
-            // Player Health Regen
-            if (player.health < player.maxHealth && !player.inPoison) {
-                if (now - player.lastCombatTime > 3000) {  // 3s delay (was 5s)
-                    player.health += 0.5;                   // slightly faster regen
-                    if (player.health > player.maxHealth) player.health = player.maxHealth;
-                }
-            }
-            
-            // Player Ammo Reload (1.5s per shot)
-            if (player.ammo < player.maxAmmo) {
-                player.reloadTimer++;
-                if (player.reloadTimer >= player.reloadTime) {
-                    player.ammo++;
-                    player.reloadTimer = 0;
-                    Sound.reload();
-                }
-            }
-            
-            // Poison damage to player
-            player.inPoison = isInPoison(player.x, player.y);
-            if (player.inPoison) {
-                player.health -= poisonZone.damage;
-                if (Math.random() < 0.1) Sound.poison();
-                if (player.health <= 0) {
-                    gameRunning = false;
-                    document.getElementById('gameOverText').textContent = 'KILLED BY POISON';
-                    document.getElementById('gameOver').style.display = 'flex';
-                }
-            }
-            
-            // Low health warning
-            const lowHealthEl = document.getElementById('lowHealthWarning');
-            if (player.health / player.maxHealth < 0.3 && player.health > 0) {
-                lowHealthEl.style.display = 'block';
-            } else {
-                lowHealthEl.style.display = 'none';
-            }
-            
-            // Update Enemies
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
-                
-                // Enemy Health Regen
-                if (enemy.health < enemy.maxHealth && !enemy.inPoison) {
-                    if (now - enemy.lastCombatTime > 5000) {
-                        enemy.health += 0.35;
-                        if (enemy.health > enemy.maxHealth) enemy.health = enemy.maxHealth;
-                    }
-                }
-                
-                // Enemy Ammo Reload
-                if (enemy.ammo < enemy.maxAmmo) {
-                    enemy.reloadTimer++;
-                    if (enemy.reloadTimer >= enemy.reloadTime) {
-                        enemy.ammo++;
-                        enemy.reloadTimer = 0;
-                    }
-                }
-                
-                // Poison damage to enemies
-                enemy.inPoison = isInPoison(enemy.x, enemy.y);
-                if (enemy.inPoison) {
-                    enemy.health -= poisonZone.damage;
-                }
-                
-                const distToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-                
-                // --- AI STATE MACHINE ---
-                
-                // 1. FLEE STORM (Highest Priority)
-                if (enemy.inPoison) {
-                    enemy.state = 'flee_storm';
-                    moveEnemy(enemy, MAP_SIZE/2, MAP_SIZE/2, enemy.speed);
-                    enemy.angle = Math.atan2((MAP_SIZE/2) - enemy.y, (MAP_SIZE/2) - enemy.x);
-                }
-                // 2. FLEE LOW HEALTH (With Gas Check)
-                else if (enemy.health < enemy.maxHealth * 0.3) {
-                    // Calculate flee direction (away from player)
-                    const fleeDx = enemy.x - player.x;
-                    const fleeDy = enemy.y - player.y;
-                    const fleeAngle = Math.atan2(fleeDy, fleeDx);
-                    
-                    // Check deeper ahead (300px) to see if fleeing leads into gas
-                    const fleeTargetX = enemy.x + Math.cos(fleeAngle) * 300;
-                    const fleeTargetY = enemy.y + Math.sin(fleeAngle) * 300;
-                    
-                    // If fleeing leads into gas, FIGHT TO THE DEATH instead
-                    if (isInPoison(fleeTargetX, fleeTargetY)) {
-                        enemy.state = 'attack'; // Fight to death
-                        if (distToPlayer > 200) {
-                            moveEnemy(enemy, player.x, player.y, enemy.speed);
-                        } else {
-                            moveEnemy(enemy, enemy.x, enemy.y, 0); 
-                        }
-                        enemy.angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-                        shoot(enemy, false, enemy.attackPattern);
-                    } else {
-                        // Safe to flee — use pathfinding flee
-                        enemy.state = 'flee';
-                        fleeFromPlayer(enemy, fleeAngle);
-                        enemy.angle = fleeAngle;
-                    }
-                } 
-                // 3. ATTACK STATE
-                // Teamed enemies have a boosted detection range so they rush the player together
-                else if (distToPlayer < (enemy.teamId ? Math.max(enemy.sightRange || 500, 700) : (enemy.sightRange || 500))) {
-                    enemy.state = 'attack';
-                    if (distToPlayer > 200) {
-                        moveEnemy(enemy, player.x, player.y, enemy.speed);
-                    } else {
-                        moveEnemy(enemy, enemy.x, enemy.y, 0); 
-                    }
-                    
-                    enemy.angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-                    shoot(enemy, false, enemy.attackPattern);
-                } 
-                // 4. ROAM / INFIGHT STATE
-                else {
-                    // --- Find nearest cube (wide radius, always checked) ---
-                    let nearestCube = null;
-                    let nearestCubeDist = 3000;
-                    for (let cube of powerCubes) {
-                        const d = Math.hypot(cube.x - enemy.x, cube.y - enemy.y);
-                        if (d < nearestCubeDist) { nearestCubeDist = d; nearestCube = cube; }
-                    }
+const fullX = entity.x + vx;
+const fullY = entity.y + vy;
+if (!checkWallCollision(fullX, fullY, r)) {
+entity.x = Math.max(r, Math.min(MAP_SIZE - r, fullX));
+entity.y = Math.max(r, Math.min(MAP_SIZE - r, fullY));
+entity.stuckTimer = 0;
+return true;
+}
 
-                    // --- Find nearest box within shooting range ---
-                    let nearestBox = null;
-                    let nearestBoxDist = Infinity;
-                    const BOX_SHOOT_RANGE = 350;
-                    for (let box of boxes) {
-                        const bx = box.x + box.width / 2;
-                        const by = box.y + box.height / 2;
-                        const d = Math.hypot(bx - enemy.x, by - enemy.y);
-                        if (d < nearestBoxDist) { nearestBoxDist = d; nearestBox = box; }
-                    }
+const onlyX = entity.x + vx;
+if (!checkWallCollision(onlyX, entity.y, r)) {
+entity.x = Math.max(r, Math.min(MAP_SIZE - r, onlyX));
+entity.stuckTimer = 0;
+moved = true;
+}
+const onlyY = entity.y + vy;
+if (!checkWallCollision(entity.x, onlyY, r)) {
+entity.y = Math.max(r, Math.min(MAP_SIZE - r, onlyY));
+entity.stuckTimer = 0;
+moved = true;
+}
+if (moved) return true;
 
-                    // Helper: shoot at nearest threat or nearby box, without changing movement.
-                    // Priority: player > other enemy (skip teammates) > box within range.
-                    function shootAtNearestThreat() {
-                        const SHOOT_RANGE = enemy.sightRange || 500;
-                        if (distToPlayer < SHOOT_RANGE) {
-                            enemy.angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-                            shoot(enemy, false, enemy.attackPattern);
-                            return;
-                        }
-                        for (let other of enemies) {
-                            if (other === enemy) continue;
-                            if (enemy.teamId && other.teamId === enemy.teamId) continue; // skip teammates
-                            const d = Math.hypot(other.x - enemy.x, other.y - enemy.y);
-                            if (d < SHOOT_RANGE) {
-                                enemy.angle = Math.atan2(other.y - enemy.y, other.x - enemy.x);
-                                shoot(enemy, false, enemy.attackPattern);
-                                return;
-                            }
-                        }
-                        // No combat target — shoot a nearby box instead
-                        if (nearestBox && nearestBoxDist < BOX_SHOOT_RANGE) {
-                            const bx = nearestBox.x + nearestBox.width / 2;
-                            const by = nearestBox.y + nearestBox.height / 2;
-                            enemy.angle = Math.atan2(by - enemy.y, bx - enemy.x);
-                            shoot(enemy, false, enemy.attackPattern);
-                        }
-                    }
+entity.stuckTimer++;
+// Unstuck logic
+if (entity.stuckTimer > 10) {
+for (let wall of walls) {
+const cx = Math.max(wall.x, Math.min(entity.x, wall.x + wall.width));
+const cy = Math.max(wall.y, Math.min(entity.y, wall.y + wall.height));
+const dx = entity.x - cx;
+const dy = entity.y - cy;
+const d = Math.hypot(dx, dy);
+if (d < r && d > 0) {
+entity.x += (dx / d) * (r - d + 1);
+entity.y += (dy / d) * (r - d + 1);
+entity.stuckTimer = 0;
+break;
+}
+}
+}
+return false;
+}
 
-                    // A very close cube (< 400px) always wins — grab it, but still shoot threats
-                    const CUBE_GRAB_RADIUS = 400;
-                    if (nearestCube && nearestCubeDist < CUBE_GRAB_RADIUS) {
-                        enemy.state = 'roam';
-                        enemy.rivalTarget = null;
-                        enemy.rivalLockTimer = 0;
-                        moveEnemy(enemy, nearestCube.x, nearestCube.y, enemy.speed * 1.1);
-                        enemy.angle = Math.atan2(nearestCube.y - enemy.y, nearestCube.x - enemy.x);
-                        shootAtNearestThreat();
-                    } else {
-                        // --- Infighting: target any nearby enemy, prefer cube-rich ones ---
-                        if (enemy.rivalLockTimer > 0) enemy.rivalLockTimer--;
+// ── SIMPLIFIED ENEMY MOVEMENT ─────────────────────────────────────────────
+// Moves toward a target point, handles walls and separation.
+// NO POISON LOGIC HERE. Poison avoidance is handled by choosing the target.
+function moveEnemySimple(enemy, targetX, targetY, speed) {
+if (speed === 0) return;
 
-                        if (enemy.rivalTarget && !enemies.includes(enemy.rivalTarget)) {
-                            enemy.rivalTarget = null;
-                            enemy.rivalLockTimer = 0;
-                        }
+let dx = targetX - enemy.x;
+let dy = targetY - enemy.y;
+const dist = Math.hypot(dx, dy);
+if (dist < 5) return; // Close enough
 
-                        if (!enemy.rivalTarget || enemy.rivalLockTimer <= 0) {
-                            let bestRival = null;
-                            let bestScore = -Infinity;
-                            for (let other of enemies) {
-                                if (other === enemy) continue;
-                                if (enemy.teamId && other.teamId === enemy.teamId) continue; // never fight teammates
-                                const d = Math.hypot(other.x - enemy.x, other.y - enemy.y);
-                                if (d > 2500) continue;
-                                const score = other.powerCubes * 300 - d;
-                                if (score > bestScore) { bestScore = score; bestRival = other; }
-                            }
-                            enemy.rivalTarget = bestRival;
-                            enemy.rivalLockTimer = 150 + Math.floor(Math.random() * 100);
-                        }
+// Base vector toward target
+let vx = (dx / dist) * speed;
+let vy = (dy / dist) * speed;
 
-                        if (enemy.rivalTarget) {
-                            // Break off to grab a nearby cube, but keep shooting
-                            if (nearestCube && nearestCubeDist < 1200) {
-                                enemy.state = 'roam';
-                                enemy.rivalTarget = null;
-                                enemy.rivalLockTimer = 0;
-                                moveEnemy(enemy, nearestCube.x, nearestCube.y, enemy.speed * 1.1);
-                                enemy.angle = Math.atan2(nearestCube.y - enemy.y, nearestCube.x - enemy.x);
-                                shootAtNearestThreat();
-                            } else {
-                                enemy.state = 'infight';
-                                const rt = enemy.rivalTarget;
-                                const distToRival = Math.hypot(rt.x - enemy.x, rt.y - enemy.y);
-                                if (distToRival > 220) {
-                                    moveEnemy(enemy, rt.x, rt.y, enemy.speed);
-                                }
-                                enemy.angle = Math.atan2(rt.y - enemy.y, rt.x - enemy.x);
-                                shoot(enemy, false, enemy.attackPattern);
-                            }
-                        } else {
-                            // No rival — prioritise: nearby box to shoot > cube to chase > wander
-                            enemy.state = 'roam';
-                            if (nearestBox && nearestBoxDist < BOX_SHOOT_RANGE) {
-                                // Stand and unload into the box
-                                const bx = nearestBox.x + nearestBox.width / 2;
-                                const by = nearestBox.y + nearestBox.height / 2;
-                                moveEnemy(enemy, bx, by, enemy.speed);
-                                enemy.angle = Math.atan2(by - enemy.y, bx - enemy.x);
-                                shoot(enemy, false, enemy.attackPattern);
-                            } else if (nearestCube) {
-                                moveEnemy(enemy, nearestCube.x, nearestCube.y, enemy.speed);
-                                enemy.angle = Math.atan2(nearestCube.y - enemy.y, nearestCube.x - enemy.x);
-                                shootAtNearestThreat();
-                            } else if (nearestBox && nearestBoxDist < 1200) {
-                                // No cube nearby — path toward a box to break it open
-                                const bx = nearestBox.x + nearestBox.width / 2;
-                                const by = nearestBox.y + nearestBox.height / 2;
-                                moveEnemy(enemy, bx, by, enemy.speed);
-                                enemy.angle = Math.atan2(by - enemy.y, bx - enemy.x);
-                                shootAtNearestThreat();
-                            } else {
-                                enemy.roamTimer--;
-                                if (enemy.roamTimer <= 0) {
-                                    enemy.roamTarget = {
-                                        x: Math.random() * MAP_SIZE,
-                                        y: Math.random() * MAP_SIZE
-                                    };
-                                    enemy.roamTimer = 200 + Math.random() * 200;
-                                }
-                                moveEnemy(enemy, enemy.roamTarget.x, enemy.roamTarget.y, enemy.speed);
-                                const dx = enemy.roamTarget.x - enemy.x;
-                                const dy = enemy.roamTarget.y - enemy.y;
-                                enemy.angle = Math.atan2(dy, dx);
-                                shootAtNearestThreat();
-                            }
-                        }
-                    }
-                }
-                
-                if (enemy.health <= 0) {
-                    Sound.enemyDeath();
-                    // Always drop at least 1 cube, plus any collected ones
-                    const dropCount = Math.max(1, enemy.powerCubes);
-                    for (let c = 0; c < dropCount; c++) {
-                        spawnPowerCube(
-                            enemy.x + (Math.random() - 0.5) * 80,
-                            enemy.y + (Math.random() - 0.5) * 80
-                        );
-                    }
-                    enemies.splice(i, 1);
-                    document.getElementById('enemyCount').textContent = enemies.length;
-                    
-                    if (enemies.length === 0) {
-                        setTimeout(() => {
-                            document.getElementById('gameOverText').textContent = "🏆 VICTORY! 🏆";
-                            document.getElementById('gameOver').style.display = 'flex';
-                            gameRunning = false;
-                        }, 500);
-                    }
-                }
-            }
-            
-            // Update Projectiles
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                const proj = projectiles[i];
-                proj.x += proj.vx;
-                proj.y += proj.vy;
-                
-                if (checkWallCollision(proj.x, proj.y, proj.radius)) {
-                    projectiles.splice(i, 1);
-                    continue;
-                }
-                
-                if (proj.x < 0 || proj.x > MAP_SIZE || proj.y < 0 || proj.y > MAP_SIZE) {
-                    projectiles.splice(i, 1);
-                    continue;
-                }
-                
-                // Check hits on Boxes
-                let hitBox = false;
-                for (let b = boxes.length - 1; b >= 0; b--) {
-                    const box = boxes[b];
-                    if (proj.x > box.x && proj.x < box.x + box.width &&
-                        proj.y > box.y && proj.y < box.y + box.height) {
-                        box.health -= proj.damage;
-                        projectiles.splice(i, 1);
-                        hitBox = true;
-                        
-                        if (box.health <= 0) {
-                            Sound.boxBreak();
-                            boxes.splice(b, 1);
-                            const cubeCount = 1;
-                            for (let c = 0; c < cubeCount; c++) {
-                                setTimeout(() => {
-                                    spawnPowerCube(
-                                        box.x + box.width/2 + (Math.random() - 0.5) * 50,
-                                        box.y + box.height/2 + (Math.random() - 0.5) * 50
-                                    );
-                                }, c * 100);
-                            }
-                            setTimeout(spawnBox, 7500);
-                        }
-                        break;
-                    }
-                }
-                if (hitBox) continue;
-                
-                if (proj.isPlayer) {
-                    for (let enemy of enemies) {
-                        const dist = Math.hypot(proj.x - enemy.x, proj.y - enemy.y);
-                        if (dist < enemy.radius + proj.radius) {
-                            enemy.health -= proj.damage;
-                            enemy.lastCombatTime = now;
-                            Sound.hit();
-                            projectiles.splice(i, 1);
-                            break;
-                        }
-                    }
-                } else {
-                    // Enemy projectiles: check player first (player always takes priority)
-                    const distToPlayer = Math.hypot(proj.x - player.x, proj.y - player.y);
-                    if (distToPlayer < player.radius + proj.radius) {
-                        player.health -= proj.damage;
-                        player.lastCombatTime = now;
-                        Sound.hit();
-                        projectiles.splice(i, 1);
+// Separation (push away from other enemies)
+let sepX = 0, sepY = 0;
+for (let other of enemies) {
+if (other === enemy) continue;
+const d = Math.hypot(other.x - enemy.x, other.y - enemy.y);
+if (d < enemy.radius * 2.5 && d > 0) {
+const pushAngle = Math.atan2(enemy.y - other.y, enemy.x - other.x);
+const force = (enemy.radius * 2.5 - d) / (enemy.radius * 2.5);
+sepX += Math.cos(pushAngle) * force * speed;
+sepY += Math.sin(pushAngle) * force * speed;
+}
+}
+vx += sepX;
+vy += sepY;
 
-                        if (player.health <= 0 && !player.inPoison) {
-                            gameRunning = false;
-                            document.getElementById('gameOverText').textContent = 'GAME OVER';
-                            document.getElementById('gameOver').style.display = 'flex';
-                        }
-                        continue;
-                    }
+// Normalize final vector to speed
+const totalSpeed = Math.hypot(vx, vy);
+if (totalSpeed > speed) {
+vx = (vx / totalSpeed) * speed;
+vy = (vy / totalSpeed) * speed;
+}
 
-                    // Then check friendly fire between enemies
-                    let hitEnemy = false;
-                    for (let other of enemies) {
-                        if (other === proj.shooter) continue; // don't hit yourself
-                        const dist = Math.hypot(proj.x - other.x, proj.y - other.y);
-                        if (dist < other.radius + proj.radius) {
-                            // Teammates are immune — projectile passes through, no retaliation
-                            if (proj.shooter && proj.shooter.teamId &&
-                                proj.shooter.teamId === other.teamId) {
-                                continue;
-                            }
-                            other.health -= proj.damage * 0.6; // reduced friendly-fire damage
-                            other.lastCombatTime = now;
-                            // The hit enemy retaliates: lock onto the shooter as their rival
-                            if (proj.shooter && enemies.includes(proj.shooter)) {
-                                other.rivalTarget = proj.shooter;
-                                other.rivalLockTimer = 300; // fight back for ~5s
-                            }
-                            projectiles.splice(i, 1);
-                            hitEnemy = true;
-                            break;
-                        }
-                    }
-                    if (hitEnemy) continue;
-                }
-            }
-            
-            // Collect Power Cubes
-            for (let i = powerCubes.length - 1; i >= 0; i--) {
-                const cube = powerCubes[i];
-                const dist = Math.hypot(cube.x - player.x, cube.y - player.y);
-                if (dist < player.radius + cube.radius + 10) {
-                    collectPowerCube(player);
-                    powerCubes.splice(i, 1);
-                    continue;
-                }
-                
-                for (let enemy of enemies) {
-                    const distE = Math.hypot(cube.x - enemy.x, cube.y - enemy.y);
-                    if (distE < enemy.radius + cube.radius + 10) {
-                        collectPowerCube(enemy);
-                        powerCubes.splice(i, 1);
-                        break;
-                    }
-                }
-            }
-            
-            updateEnemyHealthBar();
-        }
-        
-        function updateEnemyHealthBar() {
-            let maxEnemyHealth = 0;
-            let maxEnemyMaxHealth = 100;
-            let maxEnemyName = "";
-            for (let enemy of enemies) {
-                if (enemy.health > maxEnemyHealth) {
-                    maxEnemyHealth = enemy.health;
-                    maxEnemyMaxHealth = enemy.maxHealth;
-                    maxEnemyName = enemy.name;
-                }
-            }
-            if (maxEnemyMaxHealth > 0) {
-                document.getElementById('enemyHealthBar').style.width = (maxEnemyHealth / maxEnemyMaxHealth * 100) + '%';
-                document.getElementById('enemyName').textContent = maxEnemyName + (enemies.length > 1 ? ` (+${enemies.length-1})` : "");
-            } else {
-                document.getElementById('enemyHealthBar').style.width = '0%';
-                document.getElementById('enemyName').textContent = "No Enemies";
-            }
-        }
-        
-        // Draw game
-        function draw() {
-            ctx.fillStyle = '#2d5a27';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.save();
-            ctx.translate(-camera.x, -camera.y);
-            
-            // Draw grid
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            ctx.lineWidth = 1;
-            for (let x = 0; x <= MAP_SIZE; x += TILE_SIZE) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, MAP_SIZE);
-                ctx.stroke();
-            }
-            for (let y = 0; y <= MAP_SIZE; y += TILE_SIZE) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(MAP_SIZE, y);
-                ctx.stroke();
-            }
-            
-            // Draw Poison Zone
-            const centerX = MAP_SIZE / 2;
-            const centerY = MAP_SIZE / 2;
-            
-            ctx.fillStyle = 'rgba(128, 0, 128, 0.3)';
-            ctx.beginPath();
-            ctx.rect(camera.x, camera.y, canvas.width, canvas.height);
-            ctx.arc(centerX, centerY, poisonZone.radius, 0, Math.PI * 2, true);
-            ctx.fill();
-            
-            ctx.strokeStyle = '#ff00ff';
-            ctx.lineWidth = 5;
-            ctx.setLineDash([20, 10]);
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, poisonZone.radius, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // Draw walls
-            ctx.fillStyle = '#5d4e37';
-            ctx.strokeStyle = '#3d3227';
-            ctx.lineWidth = 3;
-            for (let wall of walls) {
-                if (wall.x + wall.width > camera.x && wall.x < camera.x + canvas.width &&
-                    wall.y + wall.height > camera.y && wall.y < camera.y + canvas.height) {
-                    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-                    ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
-                    
-                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                    ctx.fillRect(wall.x, wall.y + wall.height - 10, wall.width, 10);
-                    ctx.fillStyle = '#5d4e37';
-                }
-            }
-            
-            // Draw Boxes
-            for (let box of boxes) {
-                ctx.fillStyle = '#8B4513';
-                ctx.fillRect(box.x, box.y, box.width, box.height);
-                ctx.strokeStyle = '#5D2906';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(box.x, box.y, box.width, box.height);
-                
-                ctx.beginPath();
-                ctx.moveTo(box.x, box.y);
-                ctx.lineTo(box.x + box.width, box.y + box.height);
-                ctx.moveTo(box.x + box.width, box.y);
-                ctx.lineTo(box.x, box.y + box.height);
-                ctx.strokeStyle = '#5D2906';
-                ctx.stroke();
-                
-                const barWidth = 50;
-                const barHeight = 8;
-                const boxHealthPercent = box.health / box.maxHealth;
-                
-                ctx.fillStyle = '#000';
-                ctx.fillRect(box.x - 5, box.y - 15, barWidth, barHeight);
-                
-                if (boxHealthPercent > 0.6) {
-                    ctx.fillStyle = '#00ff00';
-                } else if (boxHealthPercent > 0.3) {
-                    ctx.fillStyle = '#ffff00';
-                } else {
-                    ctx.fillStyle = '#ff0000';
-                }
-                ctx.fillRect(box.x - 5, box.y - 15, barWidth * boxHealthPercent, barHeight);
-                
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(box.x - 5, box.y - 15, barWidth, barHeight);
-            }
-            
-            // Draw Power Cubes
-            const time = Date.now() / 200;
-            for (let cube of powerCubes) {
-                const floatY = Math.sin(time + cube.floatOffset) * 5;
-                
-                const gradient = ctx.createRadialGradient(
-                    cube.x, cube.y + floatY, 0,
-                    cube.x, cube.y + floatY, cube.radius + 10
-                );
-                gradient.addColorStop(0, 'rgba(255, 204, 0, 0.8)');
-                gradient.addColorStop(1, 'rgba(255, 204, 0, 0)');
-                
-                ctx.beginPath();
-                ctx.arc(cube.x, cube.y + floatY, cube.radius + 10, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.arc(cube.x, cube.y + floatY, cube.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#ffcc00';
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.arc(cube.x, cube.y + floatY, cube.radius * 0.5, 0, Math.PI * 2);
-                ctx.fillStyle = '#ffdd44';
-                ctx.fill();
-            }
-            
-            // Draw aim line from player
-            if (input.aimX !== 0 || input.aimY !== 0) {
-                ctx.beginPath();
-                ctx.moveTo(player.x, player.y);
-                ctx.lineTo(
-                    player.x + Math.cos(player.angle) * 100,
-                    player.y + Math.sin(player.angle) * 100
-                );
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-            
-            // Draw projectiles
-            for (let proj of projectiles) {
-                ctx.beginPath();
-                ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
-                ctx.fillStyle = proj.color;
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.moveTo(proj.x, proj.y);
-                ctx.lineTo(proj.x - proj.vx * 3, proj.y - proj.vy * 3);
-                ctx.strokeStyle = proj.color + '80';
-                ctx.lineWidth = proj.radius;
-                ctx.stroke();
-            }
-            
-            // Draw enemies
-            for (let enemy of enemies) {
-                if (enemy.inPoison) {
-                    ctx.beginPath();
-                    ctx.arc(enemy.x, enemy.y, enemy.radius + 5, 0, Math.PI * 2);
-                    ctx.strokeStyle = '#ff00ff';
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                }
-                
-                ctx.beginPath();
-                ctx.arc(enemy.x + 3, enemy.y + 3, enemy.radius, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-                ctx.fillStyle = enemy.color;
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.moveTo(enemy.x, enemy.y);
-                ctx.lineTo(
-                    enemy.x + Math.cos(enemy.angle) * enemy.radius * 1.3,
-                    enemy.y + Math.sin(enemy.angle) * enemy.radius * 1.3
-                );
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 4;
-                ctx.stroke();
-                
-                if (enemy.powerCubes > 0) {
-                    ctx.fillStyle = '#ffcc00';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`📦${enemy.powerCubes}`, enemy.x, enemy.y - enemy.radius - 10);
-                }
+applyMovement(enemy, vx, vy);
+}
 
-                // Team indicator: orange pulsing ring + "TEAM" label
-                if (enemy.teamId) {
-                    const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 300);
-                    ctx.beginPath();
-                    ctx.arc(enemy.x, enemy.y, enemy.radius + 9, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(255,165,0,${pulse})`;
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                    ctx.fillStyle = `rgba(255,165,0,${pulse})`;
-                    ctx.font = 'bold 11px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('TEAM', enemy.x, enemy.y - enemy.radius - 22);
-                }
-                
-                // Enemy Health Bar (Above Head)
-                const barWidth = 40;
-                const barHeight = 6;
-                ctx.fillStyle = '#000';
-                ctx.fillRect(enemy.x - barWidth/2, enemy.y - enemy.radius - 15, barWidth, barHeight);
-                ctx.fillStyle = '#ff4444';
-                ctx.fillRect(enemy.x - barWidth/2, enemy.y - enemy.radius - 15, barWidth * (enemy.health / enemy.maxHealth), barHeight);
-            }
-            
-            // Draw player
-            if (player.inPoison) {
-                ctx.beginPath();
-                ctx.arc(player.x, player.y, player.radius + 5, 0, Math.PI * 2);
-                ctx.strokeStyle = '#ff00ff';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
-            
-            ctx.beginPath();
-            ctx.arc(player.x + 3, player.y + 3, player.radius, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.fill();
-            
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-            ctx.fillStyle = player.color;
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(player.x, player.y);
-            ctx.lineTo(
-                player.x + Math.cos(player.angle) * player.radius * 1.5,
-                player.y + Math.sin(player.angle) * player.radius * 1.5
-            );
-            ctx.strokeStyle = '#00ff88';
-            ctx.lineWidth = 5;
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius * 0.6, 0, Math.PI * 2);
-            ctx.fillStyle = '#00d4ff';
-            ctx.fill();
-            
-            // --- PLAYER UI ABOVE HEAD ---
-            
-            // 1. Health Bar
-            const healthBarWidth = 60;
-            const healthBarHeight = 8;
-            const healthBarY = player.y - player.radius - 45;
-            const healthBarX = player.x - (healthBarWidth / 2);
-            
-            ctx.fillStyle = '#000';
-            ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-            ctx.fillStyle = '#00ff88';
-            ctx.fillRect(healthBarX, healthBarY, healthBarWidth * (player.health / player.maxHealth), healthBarHeight);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-            
-            // 2. Ammo Bar
-            const ammoBarWidth = 8;
-            const ammoBarHeight = 4;
-            const ammoSpacing = 2;
-            const totalAmmoWidth = (player.maxAmmo * ammoBarWidth) + ((player.maxAmmo - 1) * ammoSpacing);
-            const startX = player.x - (totalAmmoWidth / 2);
-            const ammoY = player.y - player.radius - 25;
-            
-            for (let i = 0; i < player.maxAmmo; i++) {
-                const barX = startX + (i * (ammoBarWidth + ammoSpacing));
-                
-                if (i < player.ammo) {
-                    ctx.fillStyle = '#00ff88';
-                    ctx.fillRect(barX, ammoY, ammoBarWidth, ammoBarHeight);
-                } else {
-                    ctx.fillStyle = '#555';
-                    ctx.fillRect(barX, ammoY, ammoBarWidth, ammoBarHeight);
-                    
-                    if (i === player.ammo && player.reloadTimer > 0) {
-                        const progress = player.reloadTimer / player.reloadTime;
-                        ctx.fillStyle = '#00ff88';
-                        ctx.fillRect(barX, ammoY + (ammoBarHeight * (1 - progress)), ammoBarWidth, ammoBarHeight * progress);
-                    }
-                }
-            }
-            
-            if (player.powerCubes > 0) {
-                ctx.fillStyle = '#ffcc00';
-                ctx.font = 'bold 20px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(`📦${player.powerCubes}`, player.x, player.y - player.radius - 55);
-            }
-            
-            ctx.restore();
-            
-            drawMinimap();
-        }
-        
-        function drawMinimap() {
-            minimapCtx.fillStyle = '#1a3a1a';
-            minimapCtx.fillRect(0, 0, 150, 150);
-            
-            const scale = 150 / MAP_SIZE;
-            const centerX = 75;
-            const centerY = 75;
-            
-            minimapCtx.beginPath();
-            minimapCtx.arc(centerX, centerY, poisonZone.radius * scale, 0, Math.PI * 2);
-            minimapCtx.fillStyle = 'rgba(128, 0, 128, 0.3)';
-            minimapCtx.fill();
-            minimapCtx.strokeStyle = '#ff00ff';
-            minimapCtx.lineWidth = 2;
-            minimapCtx.stroke();
-            
-            minimapCtx.fillStyle = '#3d3227';
-            for (let wall of walls) {
-                minimapCtx.fillRect(
-                    wall.x * scale,
-                    wall.y * scale,
-                    wall.width * scale,
-                    wall.height * scale
-                );
-            }
-            
-            minimapCtx.fillStyle = '#8B4513';
-            for (let box of boxes) {
-                minimapCtx.fillRect(
-                    box.x * scale,
-                    box.y * scale,
-                    box.width * scale,
-                    box.height * scale
-                );
-            }
-            
-            minimapCtx.fillStyle = '#ffcc00';
-            for (let cube of powerCubes) {
-                minimapCtx.beginPath();
-                minimapCtx.arc(cube.x * scale, cube.y * scale, 3, 0, Math.PI * 2);
-                minimapCtx.fill();
-            }
-            
-            minimapCtx.fillStyle = '#ff4444';
-            for (let enemy of enemies) {
-                minimapCtx.beginPath();
-                minimapCtx.arc(enemy.x * scale, enemy.y * scale, 3, 0, Math.PI * 2);
-                minimapCtx.fill();
-            }
-            
-            minimapCtx.fillStyle = '#00ff88';
-            minimapCtx.beginPath();
-            minimapCtx.arc(player.x * scale, player.y * scale, 4, 0, Math.PI * 2);
-            minimapCtx.fill();
-            
-            minimapCtx.strokeStyle = '#fff';
-            minimapCtx.lineWidth = 1;
-            minimapCtx.strokeRect(
-                camera.x * scale,
-                camera.y * scale,
-                canvas.width * scale,
-                canvas.height * scale
-            );
-        }
-        
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-        
-        document.getElementById('restartBtn').addEventListener('click', () => {
-            location.reload();
-        });
-        
-        gameLoop();
-    </script>
+// ── SIMPLIFIED FLEE LOGIC ─────────────────────────────────────────────────
+// Runs away from threat, but if near gas, runs toward center instead.
+function fleeFromPlayerSimplified(enemy) {
+const angleAway = Math.atan2(enemy.y - player.y, enemy.x - player.x);
+const edgeDist = getPoisonEdgeDistance(enemy.x, enemy.y);
+
+// If we are dangerously close to edge, IGNORE player and run to center
+// This prevents the "hugging" bug.
+if (edgeDist < 300) {
+const centerAngle = Math.atan2(MAP_SIZE/2 - enemy.y, MAP_SIZE/2 - enemy.x);
+moveEnemySimple(enemy, MAP_SIZE/2, MAP_SIZE/2, enemy.speed * 1.1);
+enemy.angle = centerAngle;
+} else {
+// Safe to flee normally
+moveEnemySimple(enemy, enemy.x + Math.cos(angleAway) * 100, enemy.y + Math.sin(angleAway) * 100, enemy.speed * 1.1);
+enemy.angle = angleAway;
+}
+}
+
+// Update game
+function update() {
+if (!gameRunning) return;
+const now = Date.now();
+
+// Update Poison Zone
+if (poisonZone.radius > poisonZone.minRadius) {
+poisonZone.shrinkDelay--;
+if (poisonZone.shrinkDelay <= 0) {
+poisonZone.shrinking = true;
+poisonZone.radius -= poisonZone.shrinkRate;
+if (poisonZone.radius < MAP_SIZE * 0.3 && !poisonZone.warning) {
+poisonZone.warning = true;
+document.getElementById('poisonWarning').style.display = 'block';
+setTimeout(() => { document.getElementById('poisonWarning').style.display = 'none'; }, 3000);
+}
+}
+}
+const zonePercent = Math.round((poisonZone.radius / (MAP_SIZE * 0.7)) * 100);
+document.getElementById('zoneSize').textContent = zonePercent;
+
+// Keyboard input
+if (!moveJoystick.active) {
+input.moveX = 0; input.moveY = 0;
+if (keys['w'] || keys['W']) input.moveY = -1;
+if (keys['s'] || keys['S']) input.moveY = 1;
+if (keys['a'] || keys['A']) input.moveX = -1;
+if (keys['d'] || keys['D']) input.moveX = -1;
+}
+
+// Move player
+const moveMag = Math.hypot(input.moveX, input.moveY);
+const normMoveX = moveMag > 0 ? input.moveX / moveMag : 0;
+const normMoveY = moveMag > 0 ? input.moveY / moveMag : 0;
+const newX = player.x + normMoveX * player.speed;
+const newY = player.y + normMoveY * player.speed;
+if (!checkWallCollision(newX, player.y, player.radius)) {
+player.x = Math.max(player.radius, Math.min(MAP_SIZE - player.radius, newX));
+}
+if (!checkWallCollision(player.x, newY, player.radius)) {
+player.y = Math.max(player.radius, Math.min(MAP_SIZE - player.radius, newY));
+}
+
+// Update camera
+camera.x = player.x - canvas.width / 2;
+camera.y = player.y - canvas.height / 2;
+camera.x = Math.max(0, Math.min(MAP_SIZE - canvas.width, camera.x));
+camera.y = Math.max(0, Math.min(MAP_SIZE - canvas.height, camera.y));
+
+if (input.aimX !== 0 || input.aimY !== 0) {
+player.angle = Math.atan2(input.aimY, input.aimX);
+}
+if ((input.attacking) && (input.aimX !== 0 || input.aimY !== 0)) {
+shoot(player, true, 'single');
+}
+
+// Player Health Regen
+if (player.health < player.maxHealth && !player.inPoison) {
+if (now - player.lastCombatTime > 3000) {
+player.health += 0.5;
+if (player.health > player.maxHealth) player.health = player.maxHealth;
+}
+}
+// Player Ammo Reload
+if (player.ammo < player.maxAmmo) {
+player.reloadTimer++;
+if (player.reloadTimer >= player.reloadTime) {
+player.ammo++;
+player.reloadTimer = 0;
+Sound.reload();
+}
+}
+
+// Poison damage to player
+player.inPoison = isInPoison(player.x, player.y);
+if (player.inPoison) {
+player.health -= poisonZone.damage;
+if (Math.random() < 0.1) Sound.poison();
+if (player.health <= 0) {
+gameRunning = false;
+document.getElementById('gameOverText').textContent = 'KILLED BY POISON';
+document.getElementById('gameOver').style.display = 'flex';
+}
+}
+
+// Low health warning
+const lowHealthEl = document.getElementById('lowHealthWarning');
+if (player.health / player.maxHealth < 0.3 && player.health > 0) {
+lowHealthEl.style.display = 'block';
+} else {
+lowHealthEl.style.display = 'none';
+}
+
+// Update Enemies
+for (let i = enemies.length - 1; i >= 0; i--) {
+const enemy = enemies[i];
+
+// Enemy Health Regen
+if (enemy.health < enemy.maxHealth && !enemy.inPoison) {
+if (now - enemy.lastCombatTime > 5000) {
+enemy.health += 0.35;
+if (enemy.health > enemy.maxHealth) enemy.health = enemy.maxHealth;
+}
+}
+// Enemy Ammo Reload
+if (enemy.ammo < enemy.maxAmmo) {
+enemy.reloadTimer++;
+if (enemy.reloadTimer >= enemy.reloadTime) {
+enemy.ammo++;
+enemy.reloadTimer = 0;
+}
+}
+
+// Poison damage to enemies
+enemy.inPoison = isInPoison(enemy.x, enemy.y);
+if (enemy.inPoison) {
+enemy.health -= poisonZone.damage;
+}
+
+const distToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+const edgeDist = getPoisonEdgeDistance(enemy.x, enemy.y);
+
+// ── SIMPLIFIED AI STATE MACHINE ──────────────────────────────
+// PRIORITY 1: SURVIVAL (Override everything else)
+// If near poison edge, retreat to center immediately.
+if (edgeDist < 250 || enemy.inPoison) {
+enemy.state = 'flee_storm';
+moveEnemySimple(enemy, MAP_SIZE/2, MAP_SIZE/2, enemy.speed * 1.2);
+enemy.angle = Math.atan2((MAP_SIZE/2) - enemy.y, (MAP_SIZE/2) - enemy.x);
+}
+// PRIORITY 2: FLEE PLAYER (Low Health)
+else if (enemy.health < enemy.maxHealth * 0.3) {
+enemy.state = 'flee';
+fleeFromPlayerSimplified(enemy);
+shoot(enemy, false, enemy.attackPattern); // Panic shoot
+}
+// PRIORITY 3: ATTACK PLAYER
+else if (distToPlayer < (enemy.sightRange || 500)) {
+enemy.state = 'attack';
+if (distToPlayer > 200) {
+moveEnemySimple(enemy, player.x, player.y, enemy.speed);
+} else {
+// Strafe logic simple
+const time = Date.now() / 500;
+const strafeAngle = enemy.angle + Math.PI / 2;
+const strafeX = enemy.x + Math.cos(strafeAngle) * Math.sin(time + enemy.strafeOffset) * 2;
+const strafeY = enemy.y + Math.sin(strafeAngle) * Math.sin(time + enemy.strafeOffset) * 2;
+moveEnemySimple(enemy, strafeX, strafeY, enemy.speed * 0.5);
+}
+enemy.angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+shoot(enemy, false, enemy.attackPattern);
+}
+// PRIORITY 4: ROAM / COLLECT
+else {
+enemy.state = 'roam';
+let nearestCube = null;
+let nearestCubeDist = 800; // Only look close
+for (let cube of powerCubes) {
+const d = Math.hypot(cube.x - enemy.x, cube.y - enemy.y);
+if (d < nearestCubeDist) { nearestCubeDist = d; nearestCube = cube; }
+}
+
+if (nearestCube) {
+moveEnemySimple(enemy, nearestCube.x, nearestCube.y, enemy.speed);
+enemy.angle = Math.atan2(nearestCube.y - enemy.y, nearestCube.x - enemy.x);
+} else {
+// Random Roam
+enemy.roamTimer--;
+if (enemy.roamTimer <= 0) {
+// Pick target well inside safe zone
+const angle = Math.random() * Math.PI * 2;
+const dist = Math.random() * (poisonZone.radius * 0.6);
+enemy.roamTarget = {
+x: (MAP_SIZE/2) + Math.cos(angle) * dist,
+y: (MAP_SIZE/2) + Math.sin(angle) * dist
+};
+enemy.roamTimer = 200 + Math.random() * 200;
+}
+moveEnemySimple(enemy, enemy.roamTarget.x, enemy.roamTarget.y, enemy.speed * 0.8);
+const dx = enemy.roamTarget.x - enemy.x;
+const dy = enemy.roamTarget.y - enemy.y;
+enemy.angle = Math.atan2(dy, dx);
+}
+}
+// ── END AI STATE MACHINE ─────────────────────────────────────
+
+if (enemy.health <= 0) {
+Sound.enemyDeath();
+const dropCount = Math.max(1, enemy.powerCubes);
+for (let c = 0; c < dropCount; c++) {
+spawnPowerCube(enemy.x + (Math.random() - 0.5) * 80, enemy.y + (Math.random() - 0.5) * 80);
+}
+enemies.splice(i, 1);
+document.getElementById('enemyCount').textContent = enemies.length;
+if (enemies.length === 0) {
+setTimeout(() => {
+document.getElementById('gameOverText').textContent = "🏆 VICTORY! 🏆";
+document.getElementById('gameOver').style.display = 'flex';
+gameRunning = false;
+}, 500);
+}
+}
+}
+
+// Update Projectiles
+for (let i = projectiles.length - 1; i >= 0; i--) {
+const proj = projectiles[i];
+proj.x += proj.vx;
+proj.y += proj.vy;
+
+if (checkWallCollision(proj.x, proj.y, proj.radius) || proj.x < 0 || proj.x > MAP_SIZE || proj.y < 0 || proj.y > MAP_SIZE) {
+projectiles.splice(i, 1);
+continue;
+}
+
+let hitBox = false;
+for (let b = boxes.length - 1; b >= 0; b--) {
+const box = boxes[b];
+if (proj.x > box.x && proj.x < box.x + box.width && proj.y > box.y && proj.y < box.y + box.height) {
+box.health -= proj.damage;
+projectiles.splice(i, 1);
+hitBox = true;
+if (box.health <= 0) {
+Sound.boxBreak();
+boxes.splice(b, 1);
+spawnPowerCube(box.x + box.width/2, box.y + box.height/2);
+setTimeout(spawnBox, 7500);
+}
+break;
+}
+}
+if (hitBox) continue;
+
+if (proj.isPlayer) {
+for (let enemy of enemies) {
+if (Math.hypot(proj.x - enemy.x, proj.y - enemy.y) < enemy.radius + proj.radius) {
+enemy.health -= proj.damage;
+enemy.lastCombatTime = now;
+Sound.hit();
+projectiles.splice(i, 1);
+break;
+}
+}
+} else {
+// Enemy proj
+if (Math.hypot(proj.x - player.x, proj.y - player.y) < player.radius + proj.radius) {
+player.health -= proj.damage;
+player.lastCombatTime = now;
+Sound.hit();
+projectiles.splice(i, 1);
+if (player.health <= 0 && !player.inPoison) {
+gameRunning = false;
+document.getElementById('gameOverText').textContent = 'GAME OVER';
+document.getElementById('gameOver').style.display = 'flex';
+}
+continue;
+}
+// Friendly fire
+for (let other of enemies) {
+if (other === proj.shooter) continue;
+if (Math.hypot(proj.x - other.x, proj.y - other.y) < other.radius + proj.radius) {
+other.health -= proj.damage * 0.5;
+other.lastCombatTime = now;
+projectiles.splice(i, 1);
+break;
+}
+}
+}
+}
+
+// Collect Power Cubes
+for (let i = powerCubes.length - 1; i >= 0; i--) {
+const cube = powerCubes[i];
+if (Math.hypot(cube.x - player.x, cube.y - player.y) < player.radius + cube.radius + 10) {
+collectPowerCube(player);
+powerCubes.splice(i, 1);
+continue;
+}
+for (let enemy of enemies) {
+if (Math.hypot(cube.x - enemy.x, cube.y - enemy.y) < enemy.radius + cube.radius + 10) {
+collectPowerCube(enemy);
+powerCubes.splice(i, 1);
+break;
+}
+}
+}
+updateEnemyHealthBar();
+}
+
+function updateEnemyHealthBar() {
+let maxEnemyHealth = 0;
+let maxEnemyMaxHealth = 100;
+let maxEnemyName = "";
+for (let enemy of enemies) {
+if (enemy.health > maxEnemyHealth) {
+maxEnemyHealth = enemy.health;
+maxEnemyMaxHealth = enemy.maxHealth;
+maxEnemyName = enemy.name;
+}
+}
+if (maxEnemyMaxHealth > 0) {
+document.getElementById('enemyHealthBar').style.width = (maxEnemyHealth / maxEnemyMaxHealth * 100) + '%';
+document.getElementById('enemyName').textContent = maxEnemyName + (enemies.length > 1 ? ` (+${enemies.length-1})` : "");
+} else {
+document.getElementById('enemyHealthBar').style.width = '0%';
+document.getElementById('enemyName').textContent = "No Enemies";
+}
+}
+
+// Draw game
+function draw() {
+ctx.fillStyle = '#2d5a27';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.save();
+ctx.translate(-camera.x, -camera.y);
+
+// Draw grid
+ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+ctx.lineWidth = 1;
+for (let x = 0; x <= MAP_SIZE; x += TILE_SIZE) {
+ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, MAP_SIZE); ctx.stroke();
+}
+for (let y = 0; y <= MAP_SIZE; y += TILE_SIZE) {
+ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_SIZE, y); ctx.stroke();
+}
+
+// Draw Poison Zone
+const centerX = MAP_SIZE / 2;
+const centerY = MAP_SIZE / 2;
+ctx.fillStyle = 'rgba(128, 0, 128, 0.3)';
+ctx.beginPath();
+ctx.rect(camera.x, camera.y, canvas.width, canvas.height);
+ctx.arc(centerX, centerY, poisonZone.radius, 0, Math.PI * 2, true);
+ctx.fill();
+ctx.strokeStyle = '#ff00ff';
+ctx.lineWidth = 5;
+ctx.setLineDash([20, 10]);
+ctx.beginPath();
+ctx.arc(centerX, centerY, poisonZone.radius, 0, Math.PI * 2);
+ctx.stroke();
+ctx.setLineDash([]);
+
+// Draw walls
+ctx.fillStyle = '#5d4e37';
+ctx.strokeStyle = '#3d3227';
+ctx.lineWidth = 3;
+for (let wall of walls) {
+if (wall.x + wall.width > camera.x && wall.x < camera.x + canvas.width && wall.y + wall.height > camera.y && wall.y < camera.y + canvas.height) {
+ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+ctx.fillStyle = 'rgba(0,0,0,0.3)';
+ctx.fillRect(wall.x, wall.y + wall.height - 10, wall.width, 10);
+ctx.fillStyle = '#5d4e37';
+}
+}
+
+// Draw Boxes
+for (let box of boxes) {
+ctx.fillStyle = '#8B4513';
+ctx.fillRect(box.x, box.y, box.width, box.height);
+ctx.strokeStyle = '#5D2906';
+ctx.lineWidth = 2;
+ctx.strokeRect(box.x, box.y, box.width, box.height);
+ctx.beginPath();
+ctx.moveTo(box.x, box.y); ctx.lineTo(box.x + box.width, box.y + box.height);
+ctx.moveTo(box.x + box.width, box.y); ctx.lineTo(box.x, box.y + box.height);
+ctx.stroke();
+const barWidth = 50; const barHeight = 8;
+const boxHealthPercent = box.health / box.maxHealth;
+ctx.fillStyle = '#000';
+ctx.fillRect(box.x - 5, box.y - 15, barWidth, barHeight);
+ctx.fillStyle = boxHealthPercent > 0.6 ? '#00ff00' : boxHealthPercent > 0.3 ? '#ffff00' : '#ff0000';
+ctx.fillRect(box.x - 5, box.y - 15, barWidth * boxHealthPercent, barHeight);
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+ctx.strokeRect(box.x - 5, box.y - 15, barWidth, barHeight);
+}
+
+// Draw Power Cubes
+const time = Date.now() / 200;
+for (let cube of powerCubes) {
+const floatY = Math.sin(time + cube.floatOffset) * 5;
+const gradient = ctx.createRadialGradient(cube.x, cube.y + floatY, 0, cube.x, cube.y + floatY, cube.radius + 10);
+gradient.addColorStop(0, 'rgba(255, 204, 0, 0.8)');
+gradient.addColorStop(1, 'rgba(255, 204, 0, 0)');
+ctx.beginPath(); ctx.arc(cube.x, cube.y + floatY, cube.radius + 10, 0, Math.PI * 2);
+ctx.fillStyle = gradient; ctx.fill();
+ctx.beginPath(); ctx.arc(cube.x, cube.y + floatY, cube.radius, 0, Math.PI * 2);
+ctx.fillStyle = '#ffcc00'; ctx.fill();
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+}
+
+// Draw aim line
+if (input.aimX !== 0 || input.aimY !== 0) {
+ctx.beginPath();
+ctx.moveTo(player.x, player.y);
+ctx.lineTo(player.x + Math.cos(player.angle) * 100, player.y + Math.sin(player.angle) * 100);
+ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+ctx.lineWidth = 2;
+ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+}
+
+// Draw projectiles
+for (let proj of projectiles) {
+ctx.beginPath();
+ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+ctx.fillStyle = proj.color; ctx.fill();
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+ctx.beginPath();
+ctx.moveTo(proj.x, proj.y);
+ctx.lineTo(proj.x - proj.vx * 3, proj.y - proj.vy * 3);
+ctx.strokeStyle = proj.color + '80';
+ctx.lineWidth = proj.radius; ctx.stroke();
+}
+
+// Draw enemies
+for (let enemy of enemies) {
+if (enemy.inPoison) {
+ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.radius + 5, 0, Math.PI * 2);
+ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 3; ctx.stroke();
+}
+ctx.beginPath(); ctx.arc(enemy.x + 3, enemy.y + 3, enemy.radius, 0, Math.PI * 2);
+ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill();
+ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+ctx.fillStyle = enemy.color; ctx.fill();
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+ctx.beginPath();
+ctx.moveTo(enemy.x, enemy.y);
+ctx.lineTo(enemy.x + Math.cos(enemy.angle) * enemy.radius * 1.3, enemy.y + Math.sin(enemy.angle) * enemy.radius * 1.3);
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+if (enemy.powerCubes > 0) {
+ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+ctx.fillText(`📦${enemy.powerCubes}`, enemy.x, enemy.y - enemy.radius - 10);
+}
+if (enemy.teamId) {
+const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 300);
+ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.radius + 9, 0, Math.PI * 2);
+ctx.strokeStyle = `rgba(255,165,0,${pulse})`; ctx.lineWidth = 3; ctx.stroke();
+}
+const barWidth = 40; const barHeight = 6;
+ctx.fillStyle = '#000';
+ctx.fillRect(enemy.x - barWidth/2, enemy.y - enemy.radius - 15, barWidth, barHeight);
+ctx.fillStyle = '#ff4444';
+ctx.fillRect(enemy.x - barWidth/2, enemy.y - enemy.radius - 15, barWidth * (enemy.health / enemy.maxHealth), barHeight);
+}
+
+// Draw player
+if (player.inPoison) {
+ctx.beginPath(); ctx.arc(player.x, player.y, player.radius + 5, 0, Math.PI * 2);
+ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 3; ctx.stroke();
+}
+ctx.beginPath(); ctx.arc(player.x + 3, player.y + 3, player.radius, 0, Math.PI * 2);
+ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill();
+ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+ctx.fillStyle = player.color; ctx.fill();
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+ctx.beginPath();
+ctx.moveTo(player.x, player.y);
+ctx.lineTo(player.x + Math.cos(player.angle) * player.radius * 1.5, player.y + Math.sin(player.angle) * player.radius * 1.5);
+ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 5; ctx.stroke();
+ctx.beginPath(); ctx.arc(player.x, player.y, player.radius * 0.6, 0, Math.PI * 2);
+ctx.fillStyle = '#00d4ff'; ctx.fill();
+
+// Player UI
+const healthBarWidth = 60; const healthBarHeight = 8;
+const healthBarY = player.y - player.radius - 45;
+const healthBarX = player.x - (healthBarWidth / 2);
+ctx.fillStyle = '#000';
+ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+ctx.fillStyle = '#00ff88';
+ctx.fillRect(healthBarX, healthBarY, healthBarWidth * (player.health / player.maxHealth), healthBarHeight);
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+
+const ammoBarWidth = 8; const ammoBarHeight = 4; const ammoSpacing = 2;
+const totalAmmoWidth = (player.maxAmmo * ammoBarWidth) + ((player.maxAmmo - 1) * ammoSpacing);
+const startX = player.x - (totalAmmoWidth / 2);
+const ammoY = player.y - player.radius - 25;
+for (let i = 0; i < player.maxAmmo; i++) {
+const barX = startX + (i * (ammoBarWidth + ammoSpacing));
+if (i < player.ammo) {
+ctx.fillStyle = '#00ff88';
+ctx.fillRect(barX, ammoY, ammoBarWidth, ammoBarHeight);
+} else {
+ctx.fillStyle = '#555';
+ctx.fillRect(barX, ammoY, ammoBarWidth, ammoBarHeight);
+if (i === player.ammo && player.reloadTimer > 0) {
+const progress = player.reloadTimer / player.reloadTime;
+ctx.fillStyle = '#00ff88';
+ctx.fillRect(barX, ammoY + (ammoBarHeight * (1 - progress)), ammoBarWidth, ammoBarHeight * progress);
+}
+}
+}
+if (player.powerCubes > 0) {
+ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center';
+ctx.fillText(`📦${player.powerCubes}`, player.x, player.y - player.radius - 55);
+}
+
+ctx.restore();
+drawMinimap();
+}
+
+function drawMinimap() {
+minimapCtx.fillStyle = '#1a3a1a';
+minimapCtx.fillRect(0, 0, 150, 150);
+const scale = 150 / MAP_SIZE;
+const centerX = 75;
+const centerY = 75;
+minimapCtx.beginPath();
+minimapCtx.arc(centerX, centerY, poisonZone.radius * scale, 0, Math.PI * 2);
+minimapCtx.fillStyle = 'rgba(128, 0, 128, 0.3)'; minimapCtx.fill();
+minimapCtx.strokeStyle = '#ff00ff'; minimapCtx.lineWidth = 2; minimapCtx.stroke();
+minimapCtx.fillStyle = '#3d3227';
+for (let wall of walls) minimapCtx.fillRect(wall.x * scale, wall.y * scale, wall.width * scale, wall.height * scale);
+minimapCtx.fillStyle = '#8B4513';
+for (let box of boxes) minimapCtx.fillRect(box.x * scale, box.y * scale, box.width * scale, box.height * scale);
+minimapCtx.fillStyle = '#ffcc00';
+for (let cube of powerCubes) { minimapCtx.beginPath(); minimapCtx.arc(cube.x * scale, cube.y * scale, 3, 0, Math.PI * 2); minimapCtx.fill(); }
+minimapCtx.fillStyle = '#ff4444';
+for (let enemy of enemies) { minimapCtx.beginPath(); minimapCtx.arc(enemy.x * scale, enemy.y * scale, 3, 0, Math.PI * 2); minimapCtx.fill(); }
+minimapCtx.fillStyle = '#00ff88';
+minimapCtx.beginPath(); minimapCtx.arc(player.x * scale, player.y * scale, 4, 0, Math.PI * 2); minimapCtx.fill();
+minimapCtx.strokeStyle = '#fff'; minimapCtx.lineWidth = 1;
+minimapCtx.strokeRect(camera.x * scale, camera.y * scale, canvas.width * scale, canvas.height * scale);
+}
+
+function gameLoop() {
+update();
+draw();
+requestAnimationFrame(gameLoop);
+}
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+location.reload();
+});
+gameLoop();
+</script>
 </body>
 </html>
