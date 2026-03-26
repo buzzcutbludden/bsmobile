@@ -108,23 +108,22 @@ let gameRunning = true;
 const poisonZone = { radius: MAP_SIZE*0.7, minRadius:500, shrinkRate:1.0, damage:0.5, shrinking:false, shrinkDelay:150, warning:false };
 const camera = { x:0, y:0 };
 
-// input.skill / input.ultimate removed — dead code
 const input = { moveX:0, moveY:0, aimX:0, aimY:0, attacking:false };
 const moveJoystick  = { active:false, originX:0, originY:0, maxDist:35 };
 const attackJoystick = { active:false, originX:0, originY:0, maxDist:35 };
 
 // ---------------------------------------------------------------------------
-// Player  (180 HP, 3-shot burst, 150 ms cooldown, 75-frame reload)
+// Player
 // ---------------------------------------------------------------------------
 const player = {
   x:MAP_SIZE/2, y:MAP_SIZE/2, radius:25,
-  speed:8.0,                 // kept — mobile runs 2x slower
+  speed:8.0,
   health:180, maxHealth:180, baseHealth:180,
   damage:110, baseDamage:110,
   powerCubes:0, color:'#00a8ff', angle:0,
-  lastAttack:0, attackCooldown:150,  // fast 3-shot burst
+  lastAttack:0, attackCooldown:150,
   inPoison:false,
-  ammo:3, maxAmmo:3, reloadTimer:0, reloadTime:75,  // unchanged reload
+  ammo:3, maxAmmo:3, reloadTimer:0, reloadTime:75,
   lastCombatTime:0
 };
 
@@ -132,7 +131,24 @@ const player = {
 // World
 // ---------------------------------------------------------------------------
 const walls = [];
-for (let i=0;i<250;i++) walls.push({ x:Math.random()*(MAP_SIZE-200)+100, y:Math.random()*(MAP_SIZE-200)+100, width:Math.random()*150+50, height:Math.random()*150+50 });
+for (let i=0;i<250;i++) {
+  let wx, wy, ww, wh;
+  let valid = false;
+  let attempts = 0;
+  while (!valid && attempts < 100) {
+    wx = Math.random()*(MAP_SIZE-200)+100;
+    wy = Math.random()*(MAP_SIZE-200)+100;
+    ww = Math.random()*150+50;
+    wh = Math.random()*150+50;
+    attempts++;
+    valid = true;
+    const centerX = MAP_SIZE/2;
+    const centerY = MAP_SIZE/2;
+    const dist = Math.hypot(wx - centerX, wy - centerY);
+    if (dist < 400) valid = false;
+  }
+  walls.push({ x:wx, y:wy, width:ww, height:wh });
+}
 
 let projectiles = [];
 const boxes=[], powerCubes=[];
@@ -153,7 +169,7 @@ function spawnBox() {
 function spawnPowerCube(x,y) { powerCubes.push({x,y,radius:12,value:1,floatOffset:Math.random()*Math.PI*2}); }
 
 // ---------------------------------------------------------------------------
-// Enemy types  — speeds kept from mobile version, sniper gets damage=162
+// Enemy types
 // ---------------------------------------------------------------------------
 const enemyTypes = [
   { name:'Tank',    health:600, speed:4.8, damage:45,  color:'#487eb0', radius:30, attackPattern:'single',  maxAmmo:3, reloadTime:65,  attackCooldown:250 },
@@ -303,11 +319,10 @@ function checkWallCollision(x,y,radius) {
   return false;
 }
 function isInPoison(x,y) { return Math.hypot(x-MAP_SIZE/2,y-MAP_SIZE/2)>poisonZone.radius; }
-// Returns positive value = safely inside zone, negative = in poison
 function edgeMargin(x,y) { return poisonZone.radius-Math.hypot(x-MAP_SIZE/2,y-MAP_SIZE/2); }
 
 // ---------------------------------------------------------------------------
-// Shooting — sniper projectile travels at 2.3× normal NPC speed
+// Shooting
 // ---------------------------------------------------------------------------
 function shoot(shooter,isPlayer,pattern='single') {
   const now=Date.now();
@@ -321,7 +336,6 @@ function shoot(shooter,isPlayer,pattern='single') {
   const sx=shooter.x,sy=shooter.y,sa=shooter.angle;
 
   if (pattern==='single'||pattern==='sniper') {
-    // Sniper: faster projectile + bright red colour so player can see it coming
     const spd=(pattern==='sniper'&&!isPlayer)?32:baseSpeed;
     projectiles.push({x:sx,y:sy,vx:Math.cos(sa)*spd,vy:Math.sin(sa)*spd,
       radius:isPlayer?6:8, damage, isPlayer, shooter:ref,
@@ -357,8 +371,7 @@ function collectPowerCube(entity) {
 }
 
 // ---------------------------------------------------------------------------
-// applyMovement — axis-separated wall sliding + fan-scan unstuck
-// No border-gravity here; that only lives in the flee state.
+// applyMovement
 // ---------------------------------------------------------------------------
 function applyMovement(entity,vx,vy) {
   if (vx===0&&vy===0) return false;
@@ -394,14 +407,11 @@ function applyMovement(entity,vx,vy) {
 }
 
 // ---------------------------------------------------------------------------
-// moveEnemy — navigate toward target with separation force and jitter.
-// Poison escape is handled inline (highest priority, bypasses everything).
-// No border-gravity pull — that was causing the clustering-ring bug.
+// moveEnemy
 // ---------------------------------------------------------------------------
 function moveEnemy(enemy,targetX,targetY,speed) {
   if (speed===0) return;
 
-  // In poison: rush to center, skip all other logic
   if (enemy.inPoison) {
     const a=Math.atan2(MAP_SIZE/2-enemy.y,MAP_SIZE/2-enemy.x);
     applyMovement(enemy,Math.cos(a)*speed*1.4,Math.sin(a)*speed*1.4);
@@ -411,7 +421,6 @@ function moveEnemy(enemy,targetX,targetY,speed) {
   const dx=targetX-enemy.x, dy=targetY-enemy.y, dist=Math.hypot(dx,dy);
   let vx=dist>0?(dx/dist)*speed:0, vy=dist>0?(dy/dist)*speed:0;
 
-  // Separation from allies
   for (let other of enemies) {
     if (other===enemy) continue;
     const d=Math.hypot(other.x-enemy.x,other.y-enemy.y), minD=enemy.radius*3.5;
@@ -421,10 +430,8 @@ function moveEnemy(enemy,targetX,targetY,speed) {
     }
   }
 
-  // Small jitter for organic feel
   vx+=(Math.random()-0.5)*0.3*speed; vy+=(Math.random()-0.5)*0.3*speed;
 
-  // Cap speed
   const ts=Math.hypot(vx,vy);
   if (ts>speed*1.6){vx=(vx/ts)*speed*1.6;vy=(vy/ts)*speed*1.6;}
 
@@ -432,15 +439,7 @@ function moveEnemy(enemy,targetX,targetY,speed) {
 }
 
 // ---------------------------------------------------------------------------
-// fleeFrom(enemy, threatX, threatY)
-//
-// FIXED: old version always fled toward map center regardless of threat
-// direction, which combined with moveEnemy's old border-gravity to create
-// a stable attractor ring just inside the poison boundary (the clustering bug).
-//
-// Now: flee AWAY from the actual threat, scanning 24 candidate angles,
-// preferring directions that: stay in the safe zone, face away from threat,
-// and avoid walls.
+// fleeFrom
 // ---------------------------------------------------------------------------
 function fleeFrom(enemy, threatX, threatY) {
   const speed = enemy.speed * 1.1;
@@ -453,12 +452,11 @@ function fleeFrom(enemy, threatX, threatY) {
     const tx=enemy.x+Math.cos(a)*speed, ty=enemy.y+Math.sin(a)*speed;
     if (checkWallCollision(tx,ty,enemy.radius)) continue;
     const margin=edgeMargin(tx,ty);
-    if (margin<0) continue; // never flee into poison
+    if (margin<0) continue;
     const distFromThreat=Math.hypot(tx-threatX,ty-threatY);
     const score=distFromThreat - Math.abs(off)*80 + Math.min(margin,300)*0.3;
     if (score>bestScore){bestScore=score;bestVx=Math.cos(a)*speed;bestVy=Math.sin(a)*speed;}
   }
-  // Also try raw ideal direction
   const tx0=enemy.x+Math.cos(idealAngle)*speed, ty0=enemy.y+Math.sin(idealAngle)*speed;
   if (!checkWallCollision(tx0,ty0,enemy.radius)&&edgeMargin(tx0,ty0)>=0) {
     const d0=Math.hypot(tx0-threatX,ty0-threatY);
@@ -474,17 +472,24 @@ function update() {
   if (!gameRunning) return;
   const now=Date.now();
 
-  // Teaming system
+  // Teaming Logic - Revised for weaker AIs
   if (!update.nextTeamTick) update.nextTeamTick=now+8000;
   if (now>update.nextTeamTick) {
     const progress=Math.max(0,(10-enemies.length)/9);
-    const teamChance=0.05+0.85*Math.pow(progress,1.5);
+    // Slightly increased base chance and progression
+    const teamChance=0.10 + 0.85 * Math.pow(progress, 1.5); 
     update.nextTeamTick=now+(10000-7000*progress);
+    
     if (Math.random()<teamChance) {
       const solos=enemies.filter(e=>!e.teamId);
       if (solos.length>=3) {
-        const seed=solos[Math.floor(Math.random()*solos.length)];
-        const nearby=solos.filter(e=>e!==seed&&Math.hypot(e.x-seed.x,e.y-seed.y)<2000).slice(0,2+Math.floor(Math.random()*2));
+        // Prioritize weaker AIs (low health or low cubes) to initiate teams
+        let seed = solos.find(e => e.health < e.maxHealth * 0.4 || e.powerCubes < 2);
+        if (!seed) seed = solos[Math.floor(Math.random()*solos.length)];
+        
+        // Increased search radius for partners
+        const nearby=solos.filter(e=>e!==seed&&Math.hypot(e.x-seed.x,e.y-seed.y)<3000).slice(0,2+Math.floor(Math.random()*2));
+        
         if (nearby.length>=2) {
           const teamId='team_'+now;
           const members=[seed,...nearby];
@@ -496,7 +501,7 @@ function update() {
     }
   }
 
-  // Poison shrink
+  // Poison
   if (poisonZone.radius>poisonZone.minRadius) {
     poisonZone.shrinkDelay--;
     if (poisonZone.shrinkDelay<=0) {
@@ -510,7 +515,7 @@ function update() {
   }
   document.getElementById('zoneSize').textContent=Math.round((poisonZone.radius/(MAP_SIZE*0.7))*100);
 
-  // Player input
+  // Player
   if (!moveJoystick.active) {
     input.moveX=0;input.moveY=0;
     if(keys['w']||keys['W'])input.moveY=-1;
@@ -530,14 +535,12 @@ function update() {
   if(input.aimX!==0||input.aimY!==0) player.angle=Math.atan2(input.aimY,input.aimX);
   if(input.attacking) shoot(player,true,'single');
 
-  // Player regen (3 s out of combat)
+  // Player Regen (0.5/tick)
   if(player.health<player.maxHealth&&!player.inPoison&&now-player.lastCombatTime>3000)
     player.health=Math.min(player.maxHealth,player.health+0.5);
 
-  // Player ammo reload
   if(player.ammo<player.maxAmmo){player.reloadTimer++;if(player.reloadTimer>=player.reloadTime){player.ammo++;player.reloadTimer=0;Sound.reload();}}
 
-  // Player poison
   player.inPoison=isInPoison(player.x,player.y);
   if(player.inPoison){
     player.health-=poisonZone.damage;
@@ -546,17 +549,14 @@ function update() {
   }
   document.getElementById('lowHealthWarning').style.display=(player.health/player.maxHealth<0.3&&player.health>0)?'block':'none';
 
-  // -------------------------------------------------------------------------
-  // Enemy loop
-  // -------------------------------------------------------------------------
+  // Enemies
   for (let i=enemies.length-1;i>=0;i--) {
     const enemy=enemies[i];
 
-    // Regen (4 s out of combat)
-    if(enemy.health<enemy.maxHealth&&!enemy.inPoison&&now-enemy.lastCombatTime>4000)
-      enemy.health=Math.min(enemy.maxHealth,enemy.health+0.5);
+    // REVISED ENEMY REGEN: Slightly weaker (0.35 vs 0.5), starts slightly later (3.5s vs 3s)
+    if(enemy.health<enemy.maxHealth&&!enemy.inPoison&&now-enemy.lastCombatTime>3500)
+      enemy.health=Math.min(enemy.maxHealth,enemy.health+0.35);
 
-    // Ammo
     if(enemy.ammo<enemy.maxAmmo){enemy.reloadTimer++;if(enemy.reloadTimer>=enemy.reloadTime){enemy.ammo++;enemy.reloadTimer=0;}}
 
     enemy.inPoison=isInPoison(enemy.x,enemy.y);
@@ -565,19 +565,11 @@ function update() {
     const distToPlayer=Math.hypot(player.x-enemy.x,player.y-enemy.y);
     const sightRange=enemy.sightRange||500;
 
-    // ------------------------------------------------------------------
-    // AI STATE MACHINE
-    // Priority: poison escape > low-health flee > player attack > infight/roam
-    // ------------------------------------------------------------------
-
     if (enemy.inPoison) {
-      // 1. Escape poison — moveEnemy handles this internally when inPoison=true
       enemy.state='flee_storm';
       moveEnemy(enemy,MAP_SIZE/2,MAP_SIZE/2,enemy.speed*1.4);
       enemy.angle=Math.atan2(MAP_SIZE/2-enemy.y,MAP_SIZE/2-enemy.x);
-
     } else if (enemy.health<enemy.maxHealth*0.3) {
-      // 2. Low health — flee from nearest threat (player OR rival, whichever is closer)
       enemy.state='flee';
       let threatX=player.x, threatY=player.y;
       if (enemy.rivalTarget&&enemies.includes(enemy.rivalTarget)) {
@@ -586,15 +578,12 @@ function update() {
       }
       fleeFrom(enemy,threatX,threatY);
       enemy.angle=Math.atan2(enemy.y-threatY,enemy.x-threatX);
-
     } else if (distToPlayer<sightRange) {
-      // 3. Player in range — always prioritise over infighting
       enemy.state='attack';
       const preferredDist=enemy.name==='Sniper'?600:200;
       if (distToPlayer>preferredDist) {
         moveEnemy(enemy,player.x,player.y,enemy.speed);
       } else if (enemy.name==='Sniper'&&distToPlayer<400) {
-        // Sniper backs off if player rushes it
         const ba=Math.atan2(enemy.y-player.y,enemy.x-player.x);
         moveEnemy(enemy,enemy.x+Math.cos(ba)*200,enemy.y+Math.sin(ba)*200,enemy.speed);
       } else {
@@ -602,9 +591,7 @@ function update() {
       }
       enemy.angle=Math.atan2(player.y-enemy.y,player.x-enemy.x);
       shoot(enemy,false,enemy.attackPattern);
-
     } else {
-      // 4. Roam / infight — player not in range
       if(enemy.rivalLockTimer>0) enemy.rivalLockTimer--;
       if(enemy.rivalTarget&&!enemies.includes(enemy.rivalTarget)){enemy.rivalTarget=null;enemy.rivalLockTimer=0;}
 
@@ -614,7 +601,6 @@ function update() {
       const BOX_SHOOT=350;
       for(let box of boxes){const bx=box.x+box.width/2,by=box.y+box.height/2;const d=Math.hypot(bx-enemy.x,by-enemy.y);if(d<nearestBoxDist){nearestBoxDist=d;nearestBox=box;}}
 
-      // Opportunistic shooting while doing other things
       function shootAtNearestThreat() {
         if(distToPlayer<sightRange){enemy.angle=Math.atan2(player.y-enemy.y,player.x-enemy.x);shoot(enemy,false,enemy.attackPattern);return;}
         for(let other of enemies){
@@ -626,14 +612,12 @@ function update() {
         if(nearestBox&&nearestBoxDist<BOX_SHOOT){const bx=nearestBox.x+nearestBox.width/2,by=nearestBox.y+nearestBox.height/2;enemy.angle=Math.atan2(by-enemy.y,bx-enemy.x);shoot(enemy,false,enemy.attackPattern);}
       }
 
-      // Nearby cube — grab immediately
       if(nearestCube&&nearestCubeDist<400){
         enemy.state='roam'; enemy.rivalTarget=null; enemy.rivalLockTimer=0;
         moveEnemy(enemy,nearestCube.x,nearestCube.y,enemy.speed*1.1);
         enemy.angle=Math.atan2(nearestCube.y-enemy.y,nearestCube.x-enemy.x);
         shootAtNearestThreat();
       } else {
-        // Re-evaluate rival
         if(!enemy.rivalTarget||enemy.rivalLockTimer<=0){
           let bestRival=null, bestScore=-Infinity;
           for(let other of enemies){
@@ -649,7 +633,6 @@ function update() {
         }
 
         if(enemy.rivalTarget){
-          // Prefer nearby cube over rival
           if(nearestCube&&nearestCubeDist<1200){
             enemy.state='roam'; enemy.rivalTarget=null; enemy.rivalLockTimer=0;
             moveEnemy(enemy,nearestCube.x,nearestCube.y,enemy.speed*1.1);
@@ -663,7 +646,6 @@ function update() {
             shoot(enemy,false,enemy.attackPattern);
           }
         } else {
-          // No rival — roam: boxes > cubes > wander
           enemy.state='roam';
           if(nearestBox&&nearestBoxDist<BOX_SHOOT){
             const bx=nearestBox.x+nearestBox.width/2,by=nearestBox.y+nearestBox.height/2;
@@ -692,7 +674,6 @@ function update() {
       }
     }
 
-    // Death
     if(enemy.health<=0){
       Sound.enemyDeath();
       const drops=Math.max(1,enemy.powerCubes);
@@ -703,9 +684,7 @@ function update() {
     }
   }
 
-  // -------------------------------------------------------------------------
   // Projectiles
-  // -------------------------------------------------------------------------
   for(let i=projectiles.length-1;i>=0;i--){
     const proj=projectiles[i];
     proj.x+=proj.vx; proj.y+=proj.vy;
@@ -733,13 +712,11 @@ function update() {
         }
       }
     } else {
-      // Player check first
       if(Math.hypot(proj.x-player.x,proj.y-player.y)<player.radius+proj.radius){
         player.health-=proj.damage; player.lastCombatTime=now; Sound.hit(); projectiles.splice(i,1);
         if(player.health<=0&&!player.inPoison){gameRunning=false;document.getElementById('gameOverText').textContent='GAME OVER';document.getElementById('gameOver').style.display='flex';}
         continue;
       }
-      // Friendly fire between enemies (60%, no team-fire)
       let hitEnemy=false;
       for(let other of enemies){
         if(other===proj.shooter)continue;
@@ -754,9 +731,7 @@ function update() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Cube pickup
-  // -------------------------------------------------------------------------
+  // Pickup
   for(let i=powerCubes.length-1;i>=0;i--){
     const cube=powerCubes[i];
     if(Math.hypot(cube.x-player.x,cube.y-player.y)<player.radius+cube.radius+10){collectPowerCube(player);powerCubes.splice(i,1);continue;}
@@ -787,19 +762,16 @@ function draw() {
   ctx.fillStyle='#2d5a27'; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save(); ctx.translate(-camera.x,-camera.y);
 
-  // Grid
   ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
   for(let x=0;x<=MAP_SIZE;x+=TILE_SIZE){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,MAP_SIZE);ctx.stroke();}
   for(let y=0;y<=MAP_SIZE;y+=TILE_SIZE){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(MAP_SIZE,y);ctx.stroke();}
 
-  // Poison overlay
   ctx.fillStyle='rgba(128,0,128,0.3)';
   ctx.beginPath(); ctx.rect(camera.x,camera.y,canvas.width,canvas.height);
   ctx.arc(MAP_SIZE/2,MAP_SIZE/2,poisonZone.radius,0,Math.PI*2,true); ctx.fill();
   ctx.strokeStyle='#ff00ff'; ctx.lineWidth=5; ctx.setLineDash([20,10]);
   ctx.beginPath(); ctx.arc(MAP_SIZE/2,MAP_SIZE/2,poisonZone.radius,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
 
-  // Walls
   ctx.fillStyle='#5d4e37'; ctx.strokeStyle='#3d3227'; ctx.lineWidth=3;
   for(let w of walls){
     if(w.x+w.width>camera.x&&w.x<camera.x+canvas.width&&w.y+w.height>camera.y&&w.y<camera.y+canvas.height){
@@ -808,7 +780,6 @@ function draw() {
     }
   }
 
-  // Boxes
   for(let box of boxes){
     ctx.fillStyle='#8B4513'; ctx.fillRect(box.x,box.y,box.width,box.height);
     ctx.strokeStyle='#5D2906'; ctx.lineWidth=2; ctx.strokeRect(box.x,box.y,box.width,box.height);
@@ -820,7 +791,6 @@ function draw() {
     ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(box.x-5,box.y-15,50,8);
   }
 
-  // Power cubes
   const t=Date.now()/200;
   for(let cube of powerCubes){
     const fy=Math.sin(t+cube.floatOffset)*5;
@@ -832,14 +802,12 @@ function draw() {
     ctx.beginPath(); ctx.arc(cube.x,cube.y+fy,cube.radius*0.5,0,Math.PI*2); ctx.fillStyle='#ffdd44'; ctx.fill();
   }
 
-  // Aim line
   if(input.aimX!==0||input.aimY!==0){
     ctx.beginPath(); ctx.moveTo(player.x,player.y);
     ctx.lineTo(player.x+Math.cos(player.angle)*100,player.y+Math.sin(player.angle)*100);
     ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=2; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Projectiles
   for(let proj of projectiles){
     ctx.beginPath(); ctx.arc(proj.x,proj.y,proj.radius,0,Math.PI*2);
     ctx.fillStyle=proj.color; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
@@ -847,11 +815,10 @@ function draw() {
     ctx.strokeStyle=proj.color+'80'; ctx.lineWidth=proj.radius; ctx.stroke();
   }
 
-  // Enemies
   const nd=Date.now();
   for(let enemy of enemies){
     if(enemy.inPoison){ctx.beginPath();ctx.arc(enemy.x,enemy.y,enemy.radius+5,0,Math.PI*2);ctx.strokeStyle='#ff00ff';ctx.lineWidth=3;ctx.stroke();}
-    if(enemy.health<enemy.maxHealth&&!enemy.inPoison&&nd-enemy.lastCombatTime>4000){
+    if(enemy.health<enemy.maxHealth&&!enemy.inPoison&&nd-enemy.lastCombatTime>3500){
       const pulse=0.5+0.5*Math.sin(nd/100);
       ctx.beginPath();ctx.arc(enemy.x,enemy.y,enemy.radius+8,0,Math.PI*2);ctx.strokeStyle=`rgba(0,255,0,${pulse})`;ctx.lineWidth=2;ctx.stroke();
     }
@@ -868,20 +835,17 @@ function draw() {
     ctx.fillStyle='#ff4444';ctx.fillRect(enemy.x-20,enemy.y-enemy.radius-15,40*(enemy.health/enemy.maxHealth),6);
   }
 
-  // Player
   if(player.inPoison){ctx.beginPath();ctx.arc(player.x,player.y,player.radius+5,0,Math.PI*2);ctx.strokeStyle='#ff00ff';ctx.lineWidth=3;ctx.stroke();}
   ctx.beginPath();ctx.arc(player.x+3,player.y+3,player.radius,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fill();
   ctx.beginPath();ctx.arc(player.x,player.y,player.radius,0,Math.PI*2);ctx.fillStyle=player.color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
   ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(player.x+Math.cos(player.angle)*player.radius*1.5,player.y+Math.sin(player.angle)*player.radius*1.5);ctx.strokeStyle='#00ff88';ctx.lineWidth=5;ctx.stroke();
   ctx.beginPath();ctx.arc(player.x,player.y,player.radius*0.6,0,Math.PI*2);ctx.fillStyle='#00d4ff';ctx.fill();
 
-  // Player health bar
   const hbx=player.x-30,hby=player.y-player.radius-45;
   ctx.fillStyle='#000';ctx.fillRect(hbx,hby,60,8);
   ctx.fillStyle='#00ff88';ctx.fillRect(hbx,hby,60*(player.health/player.maxHealth),8);
   ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(hbx,hby,60,8);
 
-  // Player ammo bars
   const aw=8,ah=4,as=2, taw=player.maxAmmo*aw+(player.maxAmmo-1)*as;
   const abx=player.x-taw/2, aby=player.y-player.radius-25;
   for(let i=0;i<player.maxAmmo;i++){
